@@ -1,14 +1,16 @@
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { sql } from "drizzle-orm";
-import { migrate } from "drizzle-orm/pglite/migrator";
 import { testSchema } from "./fixtures/schema.js";
 
 export async function createTestDb() {
   const pglite = new PGlite();
   const db = drizzle(pglite, { schema: testSchema });
 
-  // Create tables
+  // Create auth schema and tables
+  await createAuthTables(db);
+
+  // Create app tables
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS posts (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -104,4 +106,93 @@ export async function seedTestData(db: any) {
   `);
 
   return { userId1, userId2 };
+}
+
+async function createAuthTables(db: any) {
+  await db.execute(sql`CREATE SCHEMA IF NOT EXISTS auth`);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS auth.users (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      instance_id UUID,
+      aud TEXT DEFAULT 'authenticated',
+      role TEXT DEFAULT 'authenticated',
+      email TEXT UNIQUE,
+      encrypted_password TEXT,
+      email_confirmed_at TIMESTAMPTZ,
+      invited_at TIMESTAMPTZ,
+      confirmation_token TEXT,
+      confirmation_sent_at TIMESTAMPTZ,
+      recovery_token TEXT,
+      recovery_sent_at TIMESTAMPTZ,
+      email_change_token_new TEXT,
+      email_change TEXT,
+      email_change_sent_at TIMESTAMPTZ,
+      last_sign_in_at TIMESTAMPTZ,
+      raw_app_meta_data JSONB,
+      raw_user_meta_data JSONB,
+      is_super_admin BOOLEAN,
+      created_at TIMESTAMPTZ DEFAULT now(),
+      updated_at TIMESTAMPTZ DEFAULT now(),
+      phone TEXT,
+      phone_confirmed_at TIMESTAMPTZ,
+      phone_change TEXT,
+      phone_change_token TEXT,
+      phone_change_sent_at TIMESTAMPTZ,
+      email_change_token_current TEXT,
+      email_change_confirm_status INTEGER DEFAULT 0,
+      banned_until TIMESTAMPTZ,
+      reauthentication_token TEXT,
+      reauthentication_sent_at TIMESTAMPTZ,
+      is_sso_user BOOLEAN DEFAULT false,
+      deleted_at TIMESTAMPTZ,
+      is_anonymous BOOLEAN DEFAULT false,
+      name TEXT,
+      email_verified BOOLEAN,
+      image TEXT
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS auth.refresh_tokens (
+      id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+      instance_id UUID,
+      token TEXT UNIQUE,
+      user_id TEXT,
+      revoked BOOLEAN DEFAULT false,
+      created_at TIMESTAMPTZ DEFAULT now(),
+      updated_at TIMESTAMPTZ DEFAULT now(),
+      parent TEXT,
+      session_id UUID
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS auth.identities (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      provider_id TEXT NOT NULL,
+      user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+      identity_data JSONB,
+      provider TEXT NOT NULL,
+      last_sign_in_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ DEFAULT now(),
+      updated_at TIMESTAMPTZ DEFAULT now()
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS auth.sessions (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ DEFAULT now(),
+      updated_at TIMESTAMPTZ DEFAULT now(),
+      factor_id UUID,
+      aal TEXT,
+      not_after TIMESTAMPTZ,
+      refreshed_at TIMESTAMPTZ,
+      user_agent TEXT,
+      ip INET,
+      tag TEXT
+    )
+  `);
 }

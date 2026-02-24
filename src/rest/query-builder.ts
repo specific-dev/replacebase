@@ -347,7 +347,13 @@ export class QueryBuilder {
       if (value === "true") return true;
       if (value === "false") return false;
     }
-    if (dt === "number" || dt === "integer" || dt === "bigint") {
+    if (dt === "bigint") {
+      return Number(value);
+    }
+    // For integer types, Drizzle uses "custom" or "string" but the columnType
+    // contains the actual PG type. Check the column type for numeric types.
+    const ct = column.columnType;
+    if (ct === "PgInteger" || ct === "PgSmallInt" || ct === "PgBigInt53") {
       return Number(value);
     }
     return value;
