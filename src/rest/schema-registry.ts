@@ -3,12 +3,13 @@ import {
   getTableColumns,
   is,
   Table,
-  sql,
 } from "drizzle-orm";
+import { getTableConfig } from "drizzle-orm/pg-core";
 import type { PgTable, PgColumn } from "drizzle-orm/pg-core";
 
 export interface ColumnMeta {
   name: string;
+  fieldName: string; // Drizzle JS field name (camelCase)
   dataType: string;
   columnType: string;
   notNull: boolean;
@@ -51,14 +52,16 @@ export class SchemaRegistry {
   private registerTable(table: PgTable): void {
     const tableName = getTableName(table);
     const rawColumns = getTableColumns(table);
+    const config = getTableConfig(table);
 
     const columns = new Map<string, ColumnMeta>();
     const primaryKeys: string[] = [];
 
-    for (const [_fieldName, col] of Object.entries(rawColumns)) {
+    for (const [fieldName, col] of Object.entries(rawColumns)) {
       const pgCol = col as PgColumn;
       const colMeta: ColumnMeta = {
         name: pgCol.name,
+        fieldName,
         dataType: pgCol.dataType,
         columnType: pgCol.columnType,
         notNull: pgCol.notNull,
@@ -72,16 +75,20 @@ export class SchemaRegistry {
       }
     }
 
-    // Extract foreign keys from table config
+    // Extract foreign keys using getTableConfig
     const foreignKeys: ForeignKeyMeta[] = [];
-    const tableConfig = (table as any)[Table.Symbol.ExtraConfigColumns];
-
-    // Use Drizzle's internal config to get foreign keys
-    const fks = (table as any)[Symbol.for("drizzle:ForeignKeys")];
+    for (const fk of config.foreignKeys) {
+      const ref = fk.reference();
+      foreignKeys.push({
+        columns: ref.columns.map((c) => c.name),
+        foreignTable: getTableName(ref.foreignTable),
+        foreignColumns: ref.foreignColumns.map((c) => c.name),
+      });
+    }
 
     const meta: TableMeta = {
       name: tableName,
-      schema: (table as any)[Table.Symbol.Schema] as string | undefined,
+      schema: config.schema,
       columns,
       primaryKeys,
       foreignKeys,
