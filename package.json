@@ -1,0 +1,43 @@
+{
+  "name": "replacebase",
+  "version": "0.1.0",
+  "description": "Drop-in replacement for Supabase's backend",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "supabase",
+    "postgrest",
+    "gotrue",
+    "drizzle"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@hono/node-server": "^1.19.9",
+    "bcryptjs": "^3.0.3",
+    "better-auth": "^1.4.19",
+    "drizzle-orm": "^0.45.1",
+    "hono": "^4.12.2",
+    "jose": "^6.1.3"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.3.15",
+    "@supabase/supabase-js": "^2.97.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^25.3.0",
+    "drizzle-kit": "^0.31.9",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  }
+}
