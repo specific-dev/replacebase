@@ -6,7 +6,14 @@ import {
   timestamp,
   integer,
   primaryKey,
+  customType,
 } from "drizzle-orm/pg-core";
+
+const tsvector = customType<{ data: string }>({
+  dataType() {
+    return "tsvector";
+  },
+});
 
 export const posts = pgTable("posts", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -15,6 +22,8 @@ export const posts = pgTable("posts", {
   userId: uuid("user_id").notNull(),
   published: boolean("published").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  searchVector: tsvector("search_vector"),
+  tags: text("tags").array(),
 });
 
 export const comments = pgTable("comments", {

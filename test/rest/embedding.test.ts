@@ -114,6 +114,22 @@ describe("REST Resource Embedding", () => {
     expect(data![0].categories).toEqual([]);
   });
 
+  // Spread embedding: flatten related fields into parent
+  it("embeds with spread (...resource)", async () => {
+    const { data, error } = await env.supabase
+      .from("comments")
+      .select("body,...posts(title)")
+      .eq("body", "Great post!");
+
+    expect(error).toBeNull();
+    expect(data).toHaveLength(1);
+    // Spread merges post fields into the comment row
+    expect(data![0].title).toBe("First Post");
+    expect(data![0].body).toBe("Great post!");
+    // Should NOT have a nested 'posts' key
+    expect(data![0]).not.toHaveProperty("posts");
+  });
+
   // Nested embedding: posts -> comments -> (could add more)
   it("embeds nested resources (posts with comments)", async () => {
     // Test that nested embedding parsing + execution works

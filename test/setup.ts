@@ -21,7 +21,9 @@ export async function createTestDb() {
       body TEXT,
       user_id UUID NOT NULL,
       published BOOLEAN NOT NULL DEFAULT false,
-      created_at TIMESTAMP NOT NULL DEFAULT now()
+      created_at TIMESTAMP NOT NULL DEFAULT now(),
+      search_vector tsvector,
+      tags text[]
     )
   `);
 
@@ -106,6 +108,17 @@ export async function seedTestData(db: any) {
       ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 1),
       ('cccccccc-cccc-cccc-cccc-cccccccccccc', 1),
       ('cccccccc-cccc-cccc-cccc-cccccccccccc', 2)
+  `);
+
+  // Populate search vectors and tags for advanced filter tests
+  await db.execute(sql`
+    UPDATE posts SET
+      search_vector = to_tsvector(title || ' ' || coalesce(body, '')),
+      tags = CASE title
+        WHEN 'First Post' THEN ARRAY['tech', 'hello']::text[]
+        WHEN 'Second Post' THEN ARRAY['life']::text[]
+        WHEN 'Third Post' THEN ARRAY['tech', 'life']::text[]
+      END
   `);
 
   return { userId1, userId2 };
