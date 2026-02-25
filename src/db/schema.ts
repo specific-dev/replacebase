@@ -81,6 +81,35 @@ export const authIdentities = authSchema.table("identities", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
+// Storage schema
+export const storageSchema = pgSchema("storage");
+
+export const storageBuckets = storageSchema.table("buckets", {
+  id: text("id").primaryKey(),
+  name: text("name").unique().notNull(),
+  owner: uuid("owner"),
+  ownerId: text("owner_id"),
+  public: boolean("public").default(false),
+  fileSizeLimit: bigint("file_size_limit", { mode: "number" }),
+  allowedMimeTypes: text("allowed_mime_types").array(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+export const storageObjects = storageSchema.table("objects", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  bucketId: text("bucket_id").references(() => storageBuckets.id),
+  name: text("name"),
+  owner: uuid("owner"),
+  ownerId: text("owner_id"),
+  metadata: jsonb("metadata"),
+  userMetadata: jsonb("user_metadata"),
+  version: text("version"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  lastAccessedAt: timestamp("last_accessed_at", { withTimezone: true }),
+});
+
 export const authSessions = authSchema.table("sessions", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("user_id")

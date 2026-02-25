@@ -24,6 +24,7 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.997.0",
     "@hono/node-server": "^1.19.9",
     "bcryptjs": "^3.0.3",
     "better-auth": "^1.4.19",
@@ -37,6 +38,7 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^25.3.0",
     "drizzle-kit": "^0.31.9",
+    "s3rver": "^3.7.1",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   }
