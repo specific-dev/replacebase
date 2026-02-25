@@ -252,7 +252,7 @@ function buildDrizzleSchema(
       table.primaryKeys.length > 1
         ? (t: any) => [
             primaryKey({
-              columns: table.primaryKeys.map((pk) => t[pk]),
+              columns: table.primaryKeys.map((pk) => t[pk]) as [any, ...any[]],
             }),
           ]
         : undefined;
@@ -357,6 +357,7 @@ function mapColumnType(col: IntrospectedColumn): any {
       return numeric(col.name, {
         precision: col.numericPrecision ?? undefined,
         scale: col.numericScale ?? undefined,
+        mode: "string",
       });
     case "inet":
       return inet(col.name);

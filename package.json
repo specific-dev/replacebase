@@ -1,5 +1,5 @@
 {
-  "name": "replacebase",
+  "name": "@specific.dev/replacebase",
   "version": "0.1.0",
   "description": "Drop-in replacement for Supabase's backend as a Typescript library",
   "type": "module",
@@ -11,8 +11,12 @@
       "types": "./dist/index.d.ts"
     }
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
+    "prepublishOnly": "tsc",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -23,6 +27,10 @@
     "drizzle"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/specific-dev/replacebase"
+  },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.997.0",
     "@hono/node-server": "^1.19.9",
