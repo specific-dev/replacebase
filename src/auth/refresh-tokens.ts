@@ -119,3 +119,21 @@ export async function revokeUserTokens(
       )
     );
 }
+
+export async function revokeOtherSessionTokens(
+  db: PgDatabase<any, any, any>,
+  userId: string,
+  currentSessionId: string
+): Promise<void> {
+  const { ne } = await import("drizzle-orm");
+  await (db as any)
+    .update(authRefreshTokens)
+    .set({ revoked: true, updatedAt: new Date() })
+    .where(
+      and(
+        eq(authRefreshTokens.userId, userId),
+        ne(authRefreshTokens.sessionId, currentSessionId),
+        eq(authRefreshTokens.revoked, false)
+      )
+    );
+}

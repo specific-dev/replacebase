@@ -9,6 +9,7 @@ import {
   rotateRefreshToken,
   revokeSessionTokens,
   revokeUserTokens,
+  revokeOtherSessionTokens,
 } from "./refresh-tokens.js";
 import {
   formatUserResponse,
@@ -247,11 +248,23 @@ export function createAuthRouter(
       return c.json({ error: "invalid_token" }, 401);
     }
 
-    // Revoke all refresh tokens for the session
-    if (payload.session_id) {
-      await revokeSessionTokens(db, payload.session_id);
-    } else {
+    // Parse scope from query param (default: "global" per GoTrue spec)
+    const url = new URL(c.req.url);
+    const scope = url.searchParams.get("scope") || "global";
+
+    if (scope === "global") {
+      // Revoke ALL refresh tokens for the user
       await revokeUserTokens(db, payload.sub);
+    } else if (scope === "local") {
+      // Revoke only the current session's tokens
+      if (payload.session_id) {
+        await revokeSessionTokens(db, payload.session_id);
+      }
+    } else if (scope === "others") {
+      // Revoke all sessions except the current one
+      if (payload.session_id) {
+        await revokeOtherSessionTokens(db, payload.sub, payload.session_id);
+      }
     }
 
     return c.body(null, 204);
