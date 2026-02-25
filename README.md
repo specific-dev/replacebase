@@ -4,7 +4,7 @@ Replacebase is a library and tool to help you migrate away from Supabase over to
 
 There are many reason to use Replacebase:
 
-- Host your backend where you like, like AWS or [Specific](https://specific.dev)
+- Host your backend where you like, for example on AWS or [Specific](https://specific.dev)
 - Reduce your dependency on Supabase services and their uptime
 - Use a better database and storage provider, like Planetscale or [Specific](https://specific.dev)
 - Gradually migrate away from using Supabase SDKs to a more flexible backend architecture that you control
@@ -25,17 +25,21 @@ npm install @specific.dev/replacebase
 
 ## Getting started
 
-### 1. Get your Supabase details
-
 For this guide, we will use your existing Postgres database and Supabase-provided S3-storage and connect Replacebase.
+
+We also offer a skill to let your coding agent help with the migration: `npx skills add specific-dev/replacebase`
+
+### 1. Get your Supabase details
 
 Sign in to your Supabase account and retrieve the following:
 
 1. Your Postgres connection string (click "Connect" in the top bar)
 
-2. Your legacy JWT secret (go to "Settings" -> "JWT Keys" -> "Legacy JWT Secret")
+2. Your JWT Signing Key URL (go to "Settings" -> "JWT Keys" -> "View key details" -> "Discovery URL")
 
-3. If using storage, your S3 connection details and access key (go to "Storage" -> "S3")
+3. Your legacy JWT secret (go to "Settings" -> "JWT Keys" -> "Legacy JWT Secret")
+
+4. If using storage, your S3 connection details and access key (go to "Storage" -> "S3")
 
 ### 2. Serve up Replacebase
 
@@ -47,44 +51,62 @@ _If you don't have anywhere to host your backend yet, we recommend [Specific](ht
 // server.ts
 import { createReplacebase } from "replacebase";
 
-const replacebase = createReplacebase({
+const replacebase = await createReplacebase({
   databaseUrl: process.env.DATABASE_URL!, // Supabase Postgres connection string
+  jwksUrl: process.env.JWKS_URL!, // Supabase JWT Signing Key URL
   jwtSecret: process.env.JWT_SECRET!, // Supabase JWT secret
   // If using storage, pass Supabase S3 details
   storage: {
     s3: {
-      endpoint: process.env.S3_ENDPOINT!.
+      endpoint: process.env.S3_ENDPOINT!,
       region: process.env.S3_REGION!,
       accessKeyId: process.env.S3_ACCESS_KEY_ID!,
-      secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!
-    }
-  }
+      secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
+    },
+  },
 });
 ```
 
 Next you need to serve up the APIs that Replacebase exposes. Replacebase is framework-agnostic and works with any web server. Pick whichever fits your stack:
 
-**Next.js**
+<details>
+<summary><strong>Next.js</strong></summary>
 
-TODO: use Next.js API support, simple endpoint
+```ts
+// app/api/[...path]/route.ts
+export const GET = replacebase.fetch;
+export const POST = replacebase.fetch;
+export const PUT = replacebase.fetch;
+export const PATCH = replacebase.fetch;
+export const DELETE = replacebase.fetch;
+```
 
-**Node.js / Express:**
+Note: Next.js API routes don't support WebSockets, so Realtime won't work with this setup. If you need Realtime, run Replacebase as a separate backend service.
+
+</details>
+
+<details>
+<summary><strong>Express</strong></summary>
 
 ```ts
 import express from "express";
 
 const app = express();
 app.all("/*", replacebase.toNodeHandler());
-app.listen(3000);
+const server = app.listen(3000);
+replacebase.injectWebSocket(server); // Enables Realtime (broadcast + presence)
 ```
 
-**Hono / Bun / Deno / Cloudflare Workers (Web Standard `fetch`):**
+</details>
+
+<details>
+<summary><strong>Hono / Bun / Deno / Cloudflare Workers (standard fetch)</strong></summary>
 
 ```ts
 export default { fetch: replacebase.fetch };
 ```
 
-**With Realtime support (Node.js):**
+For Realtime support on Node.js, use `@hono/node-server` to get an HTTP server you can inject WebSockets into:
 
 ```ts
 import { serve } from "@hono/node-server";
@@ -92,6 +114,8 @@ import { serve } from "@hono/node-server";
 const server = serve({ fetch: replacebase.fetch, port: 3000 });
 replacebase.injectWebSocket(server);
 ```
+
+</details>
 
 ### 3. Update your client config
 
@@ -111,19 +135,19 @@ That's it, test it out!
 
 ## Next steps for migration
 
-Replacebase is designed to be a stepping stone to a larger migratiopn away from Supabase. Depending on your goals, you probably want to continue your migration by doing the following:
+Replacebase is designed to be a stepping stone to a larger migration away from Supabase. Depending on your goals, you probably want to continue your migration by doing the following:
 
 ### Change Postgres provider
 
-TODO
+Since Replacebase connects to any standard Postgres database, you can move off Supabase's hosted Postgres whenever you're ready. Spin up a database on AWS RDS, [Specific](https://specific.dev), or any other provider, migrate your data with `pg_dump`/`pg_restore`, and update your `DATABASE_URL`. Your frontend code will keep working without changes.
 
 ### Change storage provider
 
-TODO
+Replacebase works with any S3-compatible storage service. You can switch from Supabase's built-in storage to AWS S3, Cloudflare R2, [Specific](https://specific.dev), or any other provider simply by updating your credentials. Migrate existing files with a tool like `rclone` or the AWS CLI.
 
-### Migrate away from the Supabase framework and API
+### Migrate away from the Supabase SDK
 
-TODO: build regular backend API, gradually replace Supabase endpoints and update client
+Once Replacebase is running, you can start building regular backend API endpoints alongside it. For example, replace a Supabase client query like `supabase.from("posts").select()` with a call to your own `/api/posts` endpoint. With Replacebase, you can do this gradually to move towards a more flexible backend design that better fits your product. Eventually, you can drop `@supabase/supabase-js` and Replacebase from your stack entirely!
 
 ## License
 
