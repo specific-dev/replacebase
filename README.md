@@ -1,86 +1,72 @@
 # Replacebase
 
-Drop-in replacement for Supabase's backend. Plug it into your own server, point your existing `@supabase/supabase-js` client at it, and everything keeps working. Your client code doesn't change — only the URL and API keys.
+Replacebase is a library and tool to help you migrate away from Supabase over to backend infrastructure that you control. It's a simple Typescript library that wraps your Postgres database and S3 storage, and exposes a Supabase-compatible API. This means you don't have to change any frontend logic and can unify all your backend code for a simpler architecture.
 
-## Why
+There are many reason to use Replacebase:
 
-Supabase is great for getting started, but at some point you may want full control over your backend: self-host, customize behavior, avoid vendor lock-in. Replacebase gives you that migration path without rewriting your frontend. It implements the same HTTP APIs that `@supabase/supabase-js` talks to — REST, Auth, Storage, and Realtime — so your client keeps working as-is.
+- Host your backend where you like, like AWS or [Specific](https://specific.dev)
+- Reduce your dependency on Supabase services and their uptime
+- Use a better database and storage provider, like Planetscale or [Specific](https://specific.dev)
+- Gradually migrate away from using Supabase SDKs to a more flexible backend architecture that you control
+- Replace inflexible Supabase services with better alternatives, like [Better Auth](https://better-auth.com)
 
-## What you need
+Replacebase currently supports and replaces:
 
-- Your existing Supabase PostgreSQL database (Replacebase connects directly to it)
-- A [Drizzle](https://orm.drizzle.team/) schema describing your application tables
-- Your Supabase JWT secret (found in Dashboard > Settings > API)
-
-Replacebase makes no destructive changes to your database. It only adds a few nullable columns and new tables in the `auth` schema, all compatible with the existing Supabase schema.
+- REST API (can connect to any Postgres database)
+- Auth (built on [Better Auth](https://better-auth.com))
+- Storage (can connect to any S3-compatible service)
+- Realtime (broadcast and presence)
 
 ## Installation
 
 ```bash
-npm install replacebase drizzle-orm postgres
+npm install @specific.dev/replacebase
 ```
 
 ## Getting started
 
-### 1. Define your Drizzle schema
+### 1. Get your Supabase details
 
-Create a Drizzle schema that matches your existing Supabase tables:
+For this guide, we will use your existing Postgres database and Supabase-provided S3-storage and connect Replacebase.
 
-```ts
-// schema.ts
-import { pgTable, uuid, text, boolean, timestamp } from "drizzle-orm/pg-core";
+Sign in to your Supabase account and retrieve the following:
 
-export const posts = pgTable("posts", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  title: text("title").notNull(),
-  body: text("body"),
-  userId: uuid("user_id").notNull(),
-  published: boolean("published").default(false).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+1. Your Postgres connection string (click "Connect" in the top bar)
 
-export const comments = pgTable("comments", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  body: text("body").notNull(),
-  postId: uuid("post_id").notNull().references(() => posts.id),
-  userId: uuid("user_id").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+2. Your legacy JWT secret (go to "Settings" -> "JWT Keys" -> "Legacy JWT Secret")
 
-export const schema = { posts, comments };
-```
+3. If using storage, your S3 connection details and access key (go to "Storage" -> "S3")
 
-### 2. Create the server
+### 2. Serve up Replacebase
+
+On your backend, initialise Replacebase with the details from step 1.
+
+_If you don't have anywhere to host your backend yet, we recommend [Specific](https://specific.dev)_
 
 ```ts
 // server.ts
-import { createReplacebase, generateKeys } from "replacebase";
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
-import { schema } from "./schema";
-
-const db = drizzle(postgres(process.env.DATABASE_URL!));
+import { createReplacebase } from "replacebase";
 
 const replacebase = createReplacebase({
-  db,
-  schema,
-  jwtSecret: process.env.JWT_SECRET!, // Your Supabase JWT secret
+  databaseUrl: process.env.DATABASE_URL!, // Supabase Postgres connection string
+  jwtSecret: process.env.JWT_SECRET!, // Supabase JWT secret
+  // If using storage, pass Supabase S3 details
+  storage: {
+    s3: {
+      endpoint: process.env.S3_ENDPOINT!.
+      region: process.env.S3_REGION!,
+      accessKeyId: process.env.S3_ACCESS_KEY_ID!,
+      secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!
+    }
+  }
 });
 ```
 
-### 3. Generate API keys
+Next you need to serve up the APIs that Replacebase exposes. Replacebase is framework-agnostic and works with any web server. Pick whichever fits your stack:
 
-Replacebase generates its own anon and service role keys from your JWT secret. These replace the keys from your Supabase dashboard:
+**Next.js**
 
-```ts
-const keys = await generateKeys(process.env.JWT_SECRET!);
-console.log(keys.anonKey);        // Replaces your Supabase anon key
-console.log(keys.serviceRoleKey); // Replaces your Supabase service role key
-```
-
-### 4. Serve it
-
-Replacebase is framework-agnostic. Pick whichever fits your stack:
+TODO: use Next.js API support, simple endpoint
 
 **Node.js / Express:**
 
@@ -107,62 +93,37 @@ const server = serve({ fetch: replacebase.fetch, port: 3000 });
 replacebase.injectWebSocket(server);
 ```
 
-### 5. Update your client config
+### 3. Update your client config
 
-The only change on the client side is two strings — the URL and the key:
+The only change you need to make on your frontend is to connect to your own backend with Replacebase instead of Supabase.
 
 ```ts
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
-- "https://xyz.supabase.co",     // Old: Supabase-hosted
-- process.env.SUPABASE_ANON_KEY  // Old: Supabase dashboard key
-+ "http://localhost:3000",        // New: your Replacebase server
-+ process.env.REPLACEBASE_ANON_KEY // New: generated in step 3
+  -"https://xyz.supabase.co",
+  +"http://replacebase-api.spcf.app", // Insert wherever your Replacebase is served from
+  // ...
 );
 ```
 
-Everything else — queries, auth, storage, realtime — works without changes.
+That's it, test it out!
 
-## Storage
+## Next steps for migration
 
-To use `supabase.storage` calls, provide S3 configuration. Any S3-compatible service works (AWS S3, MinIO, Cloudflare R2, etc.):
+Replacebase is designed to be a stepping stone to a larger migratiopn away from Supabase. Depending on your goals, you probably want to continue your migration by doing the following:
 
-```ts
-const replacebase = createReplacebase({
-  db,
-  schema,
-  jwtSecret: process.env.JWT_SECRET!,
-  storage: {
-    s3: {
-      endpoint: process.env.S3_ENDPOINT!,
-      region: "us-east-1",
-      bucket: process.env.S3_BUCKET!,
-      accessKeyId: process.env.S3_ACCESS_KEY!,
-      secretAccessKey: process.env.S3_SECRET_KEY!,
-      forcePathStyle: true, // Required for MinIO and similar
-    },
-  },
-});
-```
+### Change Postgres provider
 
-## What keeps working
+TODO
 
-- **Queries** — `.from("table").select()`, `.insert()`, `.update()`, `.delete()`, filters, ordering, pagination, embedded resources
-- **Auth** — `.auth.signUp()`, `.auth.signInWithPassword()`, `.auth.getUser()`, `.auth.refreshSession()`, `.auth.signOut()`
-- **Row Level Security** — your existing RLS policies, `auth.uid()`, `auth.jwt()`, and role-based access all work identically
-- **Storage** — `.storage.from("bucket").upload()`, `.download()`, `.getPublicUrl()`
-- **Realtime** — `.channel("table").on("postgres_changes", ...)`
-- **Existing users** — users already in your `auth.users` table are lazily migrated on their first sign-in, no batch migration needed
+### Change storage provider
 
-## Migration checklist
+TODO
 
-1. **Create a Drizzle schema** matching your Supabase tables
-2. **Deploy Replacebase** on your own server, connected to your existing database
-3. **Generate API keys** with `generateKeys()`
-4. **Update your client** — swap the URL and API key
-5. **Verify** everything works as expected
-6. **Done** — your database and server are fully under your control
+### Migrate away from the Supabase framework and API
+
+TODO: build regular backend API, gradually replace Supabase endpoints and update client
 
 ## License
 

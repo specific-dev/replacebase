@@ -16,6 +16,7 @@ export interface StorageConfig {
 export interface ReplacebaseConfig {
   databaseUrl: string;
   jwtSecret: string;
+  jwksUrl?: string;
   storage?: StorageConfig;
   schemas?: string[];
 }
@@ -26,6 +27,7 @@ export interface ResolvedConfig {
   schema: Record<string, unknown>;
   foreignKeys: Map<string, ForeignKeyMeta[]>;
   jwtSecret: string;
+  jwksUrl?: string;
   storage?: StorageConfig;
 }
 

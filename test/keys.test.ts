@@ -95,7 +95,7 @@ describe("JWKS fallback verification", () => {
     await new Promise<void>((resolve) => server.listen(0, resolve));
     const addr = server.address();
     const port = typeof addr === "object" && addr ? addr.port : 0;
-    jwksUrl = `http://localhost:${port}`;
+    jwksUrl = `http://localhost:${port}/.well-known/jwks.json`;
   }
 
   it("falls back to JWKS for ES256 tokens", async () => {

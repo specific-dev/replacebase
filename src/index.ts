@@ -27,6 +27,7 @@ export async function createReplacebase(config: ReplacebaseConfig): Promise<Repl
     schema: tables,
     foreignKeys,
     jwtSecret: config.jwtSecret,
+    jwksUrl: config.jwksUrl,
     storage: config.storage,
   };
 

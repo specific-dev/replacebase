@@ -13,9 +13,7 @@ export function resolveKeys(config: {
   const signingKey = new TextEncoder().encode(config.jwtSecret);
 
   const jwksSet = config.jwksUrl
-    ? createRemoteJWKSet(
-        new URL(config.jwksUrl + "/.well-known/jwks.json")
-      )
+    ? createRemoteJWKSet(new URL(config.jwksUrl))
     : null;
 
   return {
