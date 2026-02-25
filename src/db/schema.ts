@@ -14,7 +14,7 @@ import {
 export const authSchema = pgSchema("auth");
 
 export const authUsers = authSchema.table("users", {
-  id: uuid("id").defaultRandom().primaryKey(),
+  id: uuid("id").$defaultFn(() => crypto.randomUUID()).primaryKey(),
   instanceId: uuid("instance_id"),
   aud: text("aud").default("authenticated"),
   role: text("role").default("authenticated"),
@@ -50,10 +50,6 @@ export const authUsers = authSchema.table("users", {
   isSsoUser: boolean("is_sso_user").default(false),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
   isAnonymous: boolean("is_anonymous").default(false),
-  // Better Auth additions (nullable, additive)
-  name: text("name"),
-  emailVerified: boolean("email_verified"),
-  image: text("image"),
 });
 
 export const authRefreshTokens = authSchema.table("refresh_tokens", {
@@ -69,7 +65,7 @@ export const authRefreshTokens = authSchema.table("refresh_tokens", {
 });
 
 export const authIdentities = authSchema.table("identities", {
-  id: uuid("id").defaultRandom().primaryKey(),
+  id: uuid("id").$defaultFn(() => crypto.randomUUID()).primaryKey(),
   providerId: text("provider_id").notNull(),
   userId: uuid("user_id")
     .notNull()
@@ -97,7 +93,7 @@ export const storageBuckets = storageSchema.table("buckets", {
 });
 
 export const storageObjects = storageSchema.table("objects", {
-  id: uuid("id").defaultRandom().primaryKey(),
+  id: uuid("id").$defaultFn(() => crypto.randomUUID()).primaryKey(),
   bucketId: text("bucket_id").references(() => storageBuckets.id),
   name: text("name"),
   owner: uuid("owner"),
@@ -111,7 +107,7 @@ export const storageObjects = storageSchema.table("objects", {
 });
 
 export const authSessions = authSchema.table("sessions", {
-  id: uuid("id").defaultRandom().primaryKey(),
+  id: uuid("id").$defaultFn(() => crypto.randomUUID()).primaryKey(),
   userId: uuid("user_id")
     .notNull()
     .references(() => authUsers.id, { onDelete: "cascade" }),

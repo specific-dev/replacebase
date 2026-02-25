@@ -123,8 +123,8 @@ export function createStorageRouter(
 
       if (objects.length > 0) {
         // Delete from S3
-        const s3Keys = objects.map((o) => `${id}/${o.name}`);
-        await objectStorage.deleteObjects(s3Keys);
+        const s3Keys = objects.map((o) => o.name!);
+        await objectStorage.deleteObjects(s3Keys, id);
 
         // Delete from DB
         await withRLS(db, ctx, (tx) =>
@@ -201,10 +201,8 @@ export function createStorageRouter(
       }
 
       // Copy in S3 then delete original
-      const s3Source = `${bucketId}/${sourceKey}`;
-      const s3Dest = `${bucketId}/${destinationKey}`;
-      await objectStorage.copyObject(s3Source, s3Dest);
-      await objectStorage.deleteObject(s3Source);
+      await objectStorage.copyObject(sourceKey, destinationKey, bucketId);
+      await objectStorage.deleteObject(sourceKey, bucketId);
 
       // Update DB record
       await withRLS(db, ctx, (tx) =>
@@ -245,9 +243,7 @@ export function createStorageRouter(
       }
 
       // Copy in S3
-      const s3Source = `${bucketId}/${sourceKey}`;
-      const s3Dest = `${bucketId}/${destinationKey}`;
-      await objectStorage.copyObject(s3Source, s3Dest);
+      await objectStorage.copyObject(sourceKey, destinationKey, bucketId);
 
       // Insert new DB record
       await withRLS(db, ctx, (tx) =>
@@ -337,8 +333,7 @@ export function createStorageRouter(
       }
 
       // Get S3 metadata
-      const s3Key = `${bucketId}/${objectPath}`;
-      const head = await objectStorage.headObject(s3Key);
+      const head = await objectStorage.headObject(objectPath, bucketId);
 
       return c.json({
         ...formatObject(obj),
@@ -414,8 +409,7 @@ export function createStorageRouter(
       if (validationError) return validationError(c);
 
       // Upload to S3
-      const s3Key = `${bucketId}/${objectPath}`;
-      await objectStorage.putObject(s3Key, bodyBuffer, { contentType, cacheControl });
+      await objectStorage.putObject(objectPath, bodyBuffer, { contentType, cacheControl }, bucketId);
 
       // Upsert DB record
       const ownerId = payload.owner || null;
@@ -538,8 +532,7 @@ export function createStorageRouter(
         return c.json({ statusCode: "403", error: "Invalid token", message: "Invalid token for this resource" }, 403);
       }
 
-      const s3Key = `${bucketId}/${objectPath}`;
-      const result = await objectStorage.getObject(s3Key);
+      const result = await objectStorage.getObject(objectPath, bucketId);
 
       return new Response(result.body, {
         headers: {
@@ -597,8 +590,7 @@ export function createStorageRouter(
       }
 
       // Stream from S3
-      const s3Key = `${bucketId}/${objectPath}`;
-      const result = await objectStorage.getObject(s3Key);
+      const result = await objectStorage.getObject(objectPath, bucketId);
 
       return new Response(result.body, {
         headers: {
@@ -645,7 +637,7 @@ export function createStorageRouter(
         return c.json({ statusCode: "404", error: "Object not found", message: "Object not found" }, 404);
       }
 
-      const head = await objectStorage.headObject(`${bucketId}/${objectPath}`);
+      const head = await objectStorage.headObject(objectPath, bucketId);
 
       return c.json({
         ...formatObject(obj),
@@ -695,8 +687,7 @@ export function createStorageRouter(
       }
 
       // Stream from S3
-      const s3Key = `${bucketId}/${objectPath}`;
-      const result = await objectStorage.getObject(s3Key);
+      const result = await objectStorage.getObject(objectPath, bucketId);
 
       // Update last accessed
       await db
@@ -744,7 +735,7 @@ export function createStorageRouter(
         );
 
         if (obj) {
-          await objectStorage.deleteObject(`${bucketId}/${prefix}`);
+          await objectStorage.deleteObject(prefix, bucketId);
           await withRLS(db, ctx, (tx) =>
             tx.delete(storageObjects).where(eq(storageObjects.id, obj.id))
           );
@@ -860,11 +851,10 @@ async function handleUpload(
     }
 
     // Upload to S3
-    const s3Key = `${bucketId}/${objectPath}`;
-    await objectStorage.putObject(s3Key, bodyBuffer, {
+    await objectStorage.putObject(objectPath, bodyBuffer, {
       contentType,
       cacheControl,
-    });
+    }, bucketId);
 
     // Insert or update DB record
     const metadata = {
