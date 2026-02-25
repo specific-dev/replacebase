@@ -1,12 +1,12 @@
 # Replacebase
 
-Replacebase is a library and tool to help you migrate away from Supabase over to backend infrastructure that you control. It's a simple Typescript library that wraps your Postgres database and S3 storage, and exposes a Supabase-compatible API. This means you don't have to change any frontend logic and can unify all your backend code for a simpler architecture.
+Replacebase is a library and tool to help you migrate away from [Supabase](https://supabase.com) over to backend infrastructure that you control. It's a simple Typescript library that wraps your Postgres database and S3 storage, and exposes a Supabase-compatible API. This means you don't have to change any frontend logic and can unify all your backend code for a simpler architecture.
 
 There are many reason to use Replacebase:
 
 - Host your backend where you like, for example on AWS or [Specific](https://specific.dev)
 - Reduce your dependency on Supabase services and their uptime
-- Use a better database and storage provider, like Planetscale or [Specific](https://specific.dev)
+- Use a better database and storage provider, like [Planetscale](https://planetscale.com) or [Specific](https://specific.dev)
 - Gradually migrate away from using Supabase SDKs to a more flexible backend architecture that you control
 - Replace inflexible Supabase services with better alternatives, like [Better Auth](https://better-auth.com)
 
@@ -31,7 +31,7 @@ We also offer a skill to let your coding agent help with the migration: `npx ski
 
 ### 1. Get your Supabase details
 
-Sign in to your Supabase account and retrieve the following:
+Sign in to your [Supabase account](https://supabase.com/dashboard) and retrieve the following:
 
 1. Your Postgres connection string (click "Connect" in the top bar)
 
