@@ -17,6 +17,8 @@ Replacebase currently supports and replaces:
 - Storage (can connect to any S3-compatible service)
 - Realtime (broadcast and presence)
 
+_This is an early-stage project, use it with care and test thoroughly before using in production_
+
 ## Installation
 
 ```bash
