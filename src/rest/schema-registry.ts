@@ -36,8 +36,11 @@ export interface TableMeta {
 export class SchemaRegistry {
   private tables = new Map<string, TableMeta>();
 
-  constructor(schema: Record<string, unknown>) {
+  constructor(schema: Record<string, unknown>, externalForeignKeys?: Map<string, ForeignKeyMeta[]>) {
     this.registerSchema(schema);
+    if (externalForeignKeys) {
+      this.injectForeignKeys(externalForeignKeys);
+    }
   }
 
   private registerSchema(schema: Record<string, unknown>): void {
@@ -108,5 +111,28 @@ export class SchemaRegistry {
 
   hasTable(name: string): boolean {
     return this.tables.has(name);
+  }
+
+  /**
+   * Inject foreign key metadata from database introspection.
+   * Used when tables are built dynamically and don't have Drizzle .references() set.
+   * Keyed by table name to avoid ambiguity when multiple tables share column names.
+   */
+  private injectForeignKeys(foreignKeysByTable: Map<string, ForeignKeyMeta[]>): void {
+    for (const [tableName, fks] of foreignKeysByTable) {
+      const meta = this.tables.get(tableName);
+      if (!meta) continue;
+
+      for (const fk of fks) {
+        const exists = meta.foreignKeys.some(
+          (existing) =>
+            existing.foreignTable === fk.foreignTable &&
+            existing.columns.join(",") === fk.columns.join(",")
+        );
+        if (!exists) {
+          meta.foreignKeys.push(fk);
+        }
+      }
+    }
   }
 }

@@ -1,16 +1,47 @@
 import { createApp } from "./server";
-import type { ReplacebaseConfig, Replacebase } from "./types";
+import type { ReplacebaseConfig, ResolvedConfig, Replacebase } from "./types";
 import { getRequestListener } from "@hono/node-server";
 import { createNodeWebSocket } from "@hono/node-ws";
 import { SignJWT } from "jose";
 import { createRealtimeHandler } from "./realtime/index.js";
 import { resolveKeys } from "./keys";
 import type { JwtKeys } from "./keys";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
+import { introspectDatabase } from "./rest/introspect";
 
 export type { ReplacebaseConfig, Replacebase, JwtClaims, RequestContext, StorageConfig } from "./types";
 export type { JwtKeys } from "./keys";
 
-export function createReplacebase(config: ReplacebaseConfig): Replacebase {
+export async function createReplacebase(config: ReplacebaseConfig): Promise<Replacebase> {
+  const pgClient = postgres(config.databaseUrl);
+  const db = drizzle(pgClient);
+
+  const { tables, foreignKeys } = await introspectDatabase(
+    db as any,
+    config.schemas ?? ["public"]
+  );
+
+  const resolved: ResolvedConfig = {
+    db: db as any,
+    schema: tables,
+    foreignKeys,
+    jwtSecret: config.jwtSecret,
+    storage: config.storage,
+  };
+
+  return createReplacebaseFromResolved(resolved);
+}
+
+/**
+ * Internal constructor used by tests (which use PGlite and provide their own db + schema).
+ * Not part of the public API.
+ */
+export function createReplacebaseInternal(config: ResolvedConfig): Replacebase {
+  return createReplacebaseFromResolved(config);
+}
+
+function createReplacebaseFromResolved(config: ResolvedConfig): Replacebase {
   const keys = resolveKeys(config);
   const app = createApp(config, keys);
 

@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { sql } from "drizzle-orm";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import { SchemaRegistry } from "./schema-registry";
+import type { ForeignKeyMeta } from "./schema-registry";
 import { QueryBuilder } from "./query-builder";
 import { parseSelect } from "./parser/select";
 import { parseFilter, parseLogicalFilter } from "./parser/filter";
@@ -15,10 +16,11 @@ import type { RLSContext } from "./rls";
 
 export function createRestRouter(
   db: PgDatabase<any, any, any>,
-  schema: Record<string, unknown>
+  schema: Record<string, unknown>,
+  foreignKeys?: Map<string, ForeignKeyMeta[]>
 ): Hono {
   const app = new Hono();
-  const registry = new SchemaRegistry(schema);
+  const registry = new SchemaRegistry(schema, foreignKeys);
 
   // POST /rpc/:function_name - RPC call
   app.post("/rpc/:function_name", async (c) => {

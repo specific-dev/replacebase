@@ -1,5 +1,6 @@
 import type { Hono } from "hono";
-import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import type { PgDatabase } from "drizzle-orm/pg-core";
+import type { ForeignKeyMeta } from "./rest/schema-registry";
 
 export interface StorageConfig {
   s3: {
@@ -14,8 +15,17 @@ export interface StorageConfig {
 }
 
 export interface ReplacebaseConfig {
-  db: PostgresJsDatabase<any>;
+  databaseUrl: string;
+  jwtSecret: string;
+  storage?: StorageConfig;
+  schemas?: string[];
+}
+
+/** Internal resolved config passed to createApp after introspection */
+export interface ResolvedConfig {
+  db: PgDatabase<any, any, any>;
   schema: Record<string, unknown>;
+  foreignKeys: Map<string, ForeignKeyMeta[]>;
   jwtSecret: string;
   storage?: StorageConfig;
 }

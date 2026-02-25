@@ -1,8 +1,9 @@
 import { serve } from "@hono/node-server";
 import { createClient } from "@supabase/supabase-js";
-import { createReplacebase, generateKeys } from "../src/index";
+import { createReplacebaseInternal, generateKeys } from "../src/index";
 import { createTestDb, seedTestData } from "./setup";
 import { testSchema } from "./fixtures/schema";
+import { introspectDatabase } from "../src/rest/introspect";
 import S3rver from "s3rver";
 import { mkdtempSync } from "fs";
 import { tmpdir } from "os";
@@ -14,9 +15,13 @@ export async function createTestEnv() {
   const { pglite, db } = await createTestDb();
   const { userId1, userId2 } = await seedTestData(db);
 
-  const replacebase = createReplacebase({
+  // Use introspection to discover schema from PGlite, just like production
+  const { tables, foreignKeys } = await introspectDatabase(db as any);
+
+  const replacebase = createReplacebaseInternal({
     db: db as any,
-    schema: testSchema,
+    schema: tables,
+    foreignKeys,
     jwtSecret: TEST_JWT_SECRET,
   });
 
@@ -59,6 +64,9 @@ export async function createStorageTestEnv() {
   const { pglite, db } = await createTestDb();
   const { userId1, userId2 } = await seedTestData(db);
 
+  // Use introspection to discover schema from PGlite
+  const { tables, foreignKeys } = await introspectDatabase(db as any);
+
   // Start local S3 server
   const s3Dir = mkdtempSync(join(tmpdir(), "replacebase-s3-"));
   const s3Server = new S3rver({
@@ -91,9 +99,10 @@ export async function createStorageTestEnv() {
     },
   };
 
-  const replacebase = createReplacebase({
+  const replacebase = createReplacebaseInternal({
     db: db as any,
-    schema: testSchema,
+    schema: tables,
+    foreignKeys,
     jwtSecret: TEST_JWT_SECRET,
     storage: storageConfig,
   });

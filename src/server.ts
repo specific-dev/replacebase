@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import type { PgDatabase } from "drizzle-orm/pg-core";
-import type { ReplacebaseConfig } from "./types";
+import type { ResolvedConfig } from "./types";
 import type { JwtKeys } from "./keys";
 import { apiKeyMiddleware } from "./middleware/api-key";
 import { supabaseCors } from "./middleware/cors";
@@ -8,7 +8,7 @@ import { createRestRouter } from "./rest/index";
 import { createAuthRouter } from "./auth/index";
 import { createStorageRouter } from "./storage/index";
 
-export function createApp(config: ReplacebaseConfig, keys: JwtKeys): Hono {
+export function createApp(config: ResolvedConfig, keys: JwtKeys): Hono {
   const app = new Hono();
 
   // Global middleware
@@ -26,7 +26,8 @@ export function createApp(config: ReplacebaseConfig, keys: JwtKeys): Hono {
   // Mount REST router
   const restRouter = createRestRouter(
     config.db as PgDatabase<any, any, any>,
-    config.schema
+    config.schema,
+    config.foreignKeys
   );
   app.route("/rest/v1", restRouter);
 
