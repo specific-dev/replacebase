@@ -411,6 +411,18 @@ export class QueryBuilder {
         return sql`${column} @@ plainto_tsquery(${value})`;
       case "phfts":
         return sql`${column} @@ phraseto_tsquery(${value})`;
+      case "wfts":
+        return sql`${column} @@ websearch_to_tsquery(${value})`;
+      case "match":
+        return sql`${column} ~ ${value}`;
+      case "imatch":
+        return sql`${column} ~* ${value}`;
+      case "isdistinct":
+        return sql`${column} IS DISTINCT FROM ${this.coerceValue(column, value)}`;
+      case "nxl":
+        return sql`NOT (${column} << ${value})`;
+      case "nxr":
+        return sql`NOT (${column} >> ${value})`;
       default:
         throw new Error(`Unsupported operator: ${operator}`);
     }

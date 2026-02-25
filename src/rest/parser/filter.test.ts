@@ -105,6 +105,36 @@ describe("Filter Parser", () => {
     expect(result).toMatchObject({ operator: "fts", value: "hello" });
   });
 
+  it("parses wfts (websearch full-text search) filter", () => {
+    const result = parseFilter("body", "wfts.hello world");
+    expect(result).toMatchObject({ operator: "wfts", value: "hello world" });
+  });
+
+  it("parses match (regex) filter", () => {
+    const result = parseFilter("name", "match.^John");
+    expect(result).toMatchObject({ operator: "match", value: "^John" });
+  });
+
+  it("parses imatch (case-insensitive regex) filter", () => {
+    const result = parseFilter("name", "imatch.^john");
+    expect(result).toMatchObject({ operator: "imatch", value: "^john" });
+  });
+
+  it("parses isdistinct filter", () => {
+    const result = parseFilter("status", "isdistinct.active");
+    expect(result).toMatchObject({ operator: "isdistinct", value: "active" });
+  });
+
+  it("parses nxl (does not extend left) filter", () => {
+    const result = parseFilter("range", "nxl.[1,5]");
+    expect(result).toMatchObject({ operator: "nxl", value: "[1,5]" });
+  });
+
+  it("parses nxr (does not extend right) filter", () => {
+    const result = parseFilter("range", "nxr.[1,5]");
+    expect(result).toMatchObject({ operator: "nxr", value: "[1,5]" });
+  });
+
   it("throws on unknown operator", () => {
     expect(() => parseFilter("name", "xyz.value")).toThrow("Unknown filter operator");
   });
