@@ -1,8 +1,9 @@
 import { Hono } from "hono";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import { eq, and, sql, ilike, asc, desc } from "drizzle-orm";
-import { SignJWT, jwtVerify } from "jose";
+import { SignJWT } from "jose";
 import type { StorageConfig } from "../types";
+import type { JwtKeys } from "../keys";
 import { apiKeyMiddleware } from "../middleware/api-key";
 import { withRLS, type RLSContext } from "../rest/rls";
 import {
@@ -13,22 +14,19 @@ import { S3ObjectStorage, type ObjectStorage } from "./s3";
 
 export function createStorageRouter(
   db: PgDatabase<any, any, any>,
-  jwtSecret: string,
+  keys: JwtKeys,
   storageConfig: StorageConfig
 ): Hono {
   const app = new Hono();
   const objectStorage: ObjectStorage = new S3ObjectStorage(storageConfig);
-  const auth = apiKeyMiddleware(jwtSecret);
+  const auth = apiKeyMiddleware(keys);
 
   // ── Bucket endpoints ───────────────────────────────────────────
 
   // List buckets
   app.get("/bucket", auth, async (c) => {
-    const ctx = getRLSContext(c);
     try {
-      const buckets = await withRLS(db, ctx, (tx) =>
-        tx.select().from(storageBuckets)
-      );
+      const buckets = await db.select().from(storageBuckets);
       return c.json(formatBuckets(buckets));
     } catch (error: any) {
       return c.json({ statusCode: "500", error: error.message, message: error.message }, 500);
@@ -38,11 +36,8 @@ export function createStorageRouter(
   // Get bucket
   app.get("/bucket/:id", auth, async (c) => {
     const id = c.req.param("id");
-    const ctx = getRLSContext(c);
     try {
-      const [bucket] = await withRLS(db, ctx, (tx) =>
-        tx.select().from(storageBuckets).where(eq(storageBuckets.id, id))
-      );
+      const [bucket] = await db.select().from(storageBuckets).where(eq(storageBuckets.id, id));
       if (!bucket) {
         return c.json({ statusCode: "404", error: "Bucket not found", message: "Bucket not found" }, 404);
       }
@@ -59,17 +54,15 @@ export function createStorageRouter(
     const bucketId = body.id || body.name;
 
     try {
-      await withRLS(db, ctx, (tx) =>
-        tx.insert(storageBuckets).values({
-          id: bucketId,
-          name: body.name || bucketId,
-          owner: ctx.userId || undefined,
-          ownerId: ctx.userId || undefined,
-          public: body.public ?? false,
-          fileSizeLimit: body.file_size_limit ?? null,
-          allowedMimeTypes: body.allowed_mime_types ?? null,
-        })
-      );
+      await db.insert(storageBuckets).values({
+        id: bucketId,
+        name: body.name || bucketId,
+        owner: ctx.userId || undefined,
+        ownerId: ctx.userId || undefined,
+        public: body.public ?? false,
+        fileSizeLimit: body.file_size_limit ?? null,
+        allowedMimeTypes: body.allowed_mime_types ?? null,
+      });
       return c.json({ name: body.name || bucketId });
     } catch (error: any) {
       if (error.message?.includes("duplicate") || error.message?.includes("unique")) {
@@ -91,13 +84,11 @@ export function createStorageRouter(
     if (body.allowed_mime_types !== undefined) updates.allowedMimeTypes = body.allowed_mime_types;
 
     try {
-      const result = await withRLS(db, ctx, (tx) =>
-        tx
-          .update(storageBuckets)
-          .set({ ...updates, updatedAt: new Date() })
-          .where(eq(storageBuckets.id, id))
-          .returning()
-      );
+      const result = await db
+        .update(storageBuckets)
+        .set({ ...updates, updatedAt: new Date() })
+        .where(eq(storageBuckets.id, id))
+        .returning();
       if (result.length === 0) {
         return c.json({ statusCode: "404", error: "Bucket not found", message: "Bucket not found" }, 404);
       }
@@ -160,9 +151,7 @@ export function createStorageRouter(
         );
       }
 
-      const result = await withRLS(db, ctx, (tx) =>
-        tx.delete(storageBuckets).where(eq(storageBuckets.id, id)).returning()
-      );
+      const result = await db.delete(storageBuckets).where(eq(storageBuckets.id, id)).returning();
 
       if (result.length === 0) {
         return c.json({ statusCode: "404", error: "Bucket not found", message: "Bucket not found" }, 404);
@@ -356,14 +345,12 @@ export function createStorageRouter(
 
     try {
       // Verify bucket exists
-      const [bucket] = await withRLS(db, ctx, (tx) =>
-        tx.select().from(storageBuckets).where(eq(storageBuckets.id, bucketId))
-      );
+      const [bucket] = await db.select().from(storageBuckets).where(eq(storageBuckets.id, bucketId));
       if (!bucket) {
         return c.json({ statusCode: "404", error: "Bucket not found", message: "Bucket not found" }, 404);
       }
 
-      const token = await createSignedToken(jwtSecret, {
+      const token = await createSignedToken(keys, {
         url: `${bucketId}/${objectPath}`,
         type: "upload",
         owner: ctx.userId,
@@ -389,7 +376,7 @@ export function createStorageRouter(
     }
 
     try {
-      const payload = await verifySignedToken(jwtSecret, token);
+      const payload = await verifySignedToken(keys, token);
       if (payload.url !== `${bucketId}/${objectPath}` || payload.type !== "upload") {
         return c.json({ statusCode: "403", error: "Invalid token", message: "Invalid token for this resource" }, 403);
       }
@@ -459,7 +446,7 @@ export function createStorageRouter(
             return { error: "Object not found", path: objectPath, signedURL: null };
           }
 
-          const token = await createSignedToken(jwtSecret, {
+          const token = await createSignedToken(keys, {
             url: `${bucketId}/${objectPath}`,
             type: "download",
           }, expiresIn);
@@ -504,7 +491,7 @@ export function createStorageRouter(
         return c.json({ statusCode: "404", error: "Object not found", message: "Object not found" }, 404);
       }
 
-      const token = await createSignedToken(jwtSecret, {
+      const token = await createSignedToken(keys, {
         url: `${bucketId}/${objectPath}`,
         type: "download",
       }, expiresIn);
@@ -527,7 +514,7 @@ export function createStorageRouter(
     }
 
     try {
-      const payload = await verifySignedToken(jwtSecret, token);
+      const payload = await verifySignedToken(keys, token);
       if (payload.url !== `${bucketId}/${objectPath}` || payload.type !== "download") {
         return c.json({ statusCode: "403", error: "Invalid token", message: "Invalid token for this resource" }, 403);
       }
@@ -783,9 +770,7 @@ async function handleUpload(
 
   try {
     // Get bucket
-    const [bucket] = await withRLS(db, ctx, (tx) =>
-      tx.select().from(storageBuckets).where(eq(storageBuckets.id, bucketId))
-    );
+    const [bucket] = await db.select().from(storageBuckets).where(eq(storageBuckets.id, bucketId));
 
     if (!bucket) {
       return c.json({ statusCode: "404", error: "Bucket not found", message: "Bucket not found" }, 404);
@@ -898,6 +883,12 @@ async function handleUpload(
       Key: `${bucketId}/${objectPath}`,
     });
   } catch (error: any) {
+    if (error.message?.includes("duplicate") || error.message?.includes("unique") || error.code === "23505") {
+      return c.json(
+        { statusCode: "409", error: "Duplicate", message: "The resource already exists" },
+        409
+      );
+    }
     return c.json({ statusCode: "500", error: error.message, message: error.message }, 500);
   }
 }
@@ -991,29 +982,27 @@ async function upsertObject(
 }
 
 async function createSignedToken(
-  jwtSecret: string,
+  keys: JwtKeys,
   payload: { url: string; type: string; owner?: string | null },
   expiresInSeconds: number = 3600
 ): Promise<string> {
-  const secret = new TextEncoder().encode(jwtSecret);
   return await new SignJWT({
     url: payload.url,
     type: payload.type,
     ...(payload.owner ? { owner: payload.owner } : {}),
     iss: "replacebase/storage",
   })
-    .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+    .setProtectedHeader({ alg: keys.algorithm, typ: "JWT" })
     .setIssuedAt()
     .setExpirationTime(`${expiresInSeconds}s`)
-    .sign(secret);
+    .sign(keys.signingKey);
 }
 
 async function verifySignedToken(
-  jwtSecret: string,
+  keys: JwtKeys,
   token: string
 ): Promise<{ url: string; type: string; owner?: string }> {
-  const secret = new TextEncoder().encode(jwtSecret);
-  const { payload } = await jwtVerify(token, secret);
+  const { payload } = await keys.verify(token);
   return payload as unknown as { url: string; type: string; owner?: string };
 }
 

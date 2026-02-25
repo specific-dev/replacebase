@@ -242,7 +242,8 @@ async function createStorageTables(db: any) {
       version TEXT,
       created_at TIMESTAMPTZ DEFAULT now(),
       updated_at TIMESTAMPTZ DEFAULT now(),
-      last_accessed_at TIMESTAMPTZ
+      last_accessed_at TIMESTAMPTZ,
+      CONSTRAINT bucketid_objname UNIQUE (bucket_id, name)
     )
   `);
 }
