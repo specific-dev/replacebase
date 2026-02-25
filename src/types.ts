@@ -6,7 +6,6 @@ export interface StorageConfig {
   s3: {
     endpoint: string;
     region: string;
-    bucket: string;
     accessKeyId: string;
     secretAccessKey: string;
     forcePathStyle?: boolean;

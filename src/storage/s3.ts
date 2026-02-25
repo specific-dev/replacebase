@@ -35,19 +35,18 @@ export interface ObjectStorage {
   putObject(
     key: string,
     body: Buffer | ReadableStream,
-    options?: ObjectStoragePutOptions,
-    bucket?: string
+    options: ObjectStoragePutOptions | undefined,
+    bucket: string
   ): Promise<void>;
-  getObject(key: string, bucket?: string): Promise<ObjectStorageGetResult>;
-  deleteObject(key: string, bucket?: string): Promise<void>;
-  deleteObjects(keys: string[], bucket?: string): Promise<void>;
-  copyObject(sourceKey: string, destKey: string, bucket?: string): Promise<void>;
-  headObject(key: string, bucket?: string): Promise<ObjectStorageHeadResult>;
+  getObject(key: string, bucket: string): Promise<ObjectStorageGetResult>;
+  deleteObject(key: string, bucket: string): Promise<void>;
+  deleteObjects(keys: string[], bucket: string): Promise<void>;
+  copyObject(sourceKey: string, destKey: string, bucket: string): Promise<void>;
+  headObject(key: string, bucket: string): Promise<ObjectStorageHeadResult>;
 }
 
 export class S3ObjectStorage implements ObjectStorage {
   private client: S3Client;
-  private bucket: string;
   private keyPrefix: string;
 
   constructor(config: StorageConfig) {
@@ -60,7 +59,6 @@ export class S3ObjectStorage implements ObjectStorage {
       },
       forcePathStyle: config.s3.forcePathStyle ?? true,
     });
-    this.bucket = config.s3.bucket;
     this.keyPrefix = config.keyPrefix || "";
   }
 
@@ -68,19 +66,15 @@ export class S3ObjectStorage implements ObjectStorage {
     return this.keyPrefix ? `${this.keyPrefix}/${key}` : key;
   }
 
-  private resolveBucket(bucket?: string): string {
-    return bucket || this.bucket;
-  }
-
   async putObject(
     key: string,
     body: Buffer | ReadableStream,
-    options?: ObjectStoragePutOptions,
-    bucket?: string
+    options: ObjectStoragePutOptions | undefined,
+    bucket: string
   ): Promise<void> {
     await this.client.send(
       new PutObjectCommand({
-        Bucket: this.resolveBucket(bucket),
+        Bucket: bucket,
         Key: this.fullKey(key),
         Body: Buffer.isBuffer(body) ? body : await streamToBuffer(body as ReadableStream),
         ContentType: options?.contentType,
@@ -90,10 +84,10 @@ export class S3ObjectStorage implements ObjectStorage {
     );
   }
 
-  async getObject(key: string, bucket?: string): Promise<ObjectStorageGetResult> {
+  async getObject(key: string, bucket: string): Promise<ObjectStorageGetResult> {
     const result = await this.client.send(
       new GetObjectCommand({
-        Bucket: this.resolveBucket(bucket),
+        Bucket: bucket,
         Key: this.fullKey(key),
       })
     );
@@ -108,20 +102,20 @@ export class S3ObjectStorage implements ObjectStorage {
     };
   }
 
-  async deleteObject(key: string, bucket?: string): Promise<void> {
+  async deleteObject(key: string, bucket: string): Promise<void> {
     await this.client.send(
       new DeleteObjectCommand({
-        Bucket: this.resolveBucket(bucket),
+        Bucket: bucket,
         Key: this.fullKey(key),
       })
     );
   }
 
-  async deleteObjects(keys: string[], bucket?: string): Promise<void> {
+  async deleteObjects(keys: string[], bucket: string): Promise<void> {
     if (keys.length === 0) return;
     await this.client.send(
       new DeleteObjectsCommand({
-        Bucket: this.resolveBucket(bucket),
+        Bucket: bucket,
         Delete: {
           Objects: keys.map((k) => ({ Key: this.fullKey(k) })),
         },
@@ -129,21 +123,20 @@ export class S3ObjectStorage implements ObjectStorage {
     );
   }
 
-  async copyObject(sourceKey: string, destKey: string, bucket?: string): Promise<void> {
-    const resolvedBucket = this.resolveBucket(bucket);
+  async copyObject(sourceKey: string, destKey: string, bucket: string): Promise<void> {
     await this.client.send(
       new CopyObjectCommand({
-        Bucket: resolvedBucket,
-        CopySource: `${resolvedBucket}/${this.fullKey(sourceKey)}`,
+        Bucket: bucket,
+        CopySource: `${bucket}/${this.fullKey(sourceKey)}`,
         Key: this.fullKey(destKey),
       })
     );
   }
 
-  async headObject(key: string, bucket?: string): Promise<ObjectStorageHeadResult> {
+  async headObject(key: string, bucket: string): Promise<ObjectStorageHeadResult> {
     const result = await this.client.send(
       new HeadObjectCommand({
-        Bucket: this.resolveBucket(bucket),
+        Bucket: bucket,
         Key: this.fullKey(key),
       })
     );

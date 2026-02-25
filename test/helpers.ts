@@ -92,7 +92,6 @@ export async function createStorageTestEnv() {
     s3: {
       endpoint: `http://localhost:${s3Address.port}`,
       region: "us-east-1",
-      bucket: "test-bucket",
       accessKeyId: "S3RVER",
       secretAccessKey: "S3RVER",
       forcePathStyle: true,
