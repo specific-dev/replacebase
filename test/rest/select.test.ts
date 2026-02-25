@@ -168,4 +168,133 @@ describe("REST Select", () => {
     expect(error).toBeNull();
     expect(data).toHaveLength(2);
   });
+
+  it("orders with nullsfirst", async () => {
+    const { data, error } = await env.supabase
+      .from("profiles")
+      .select("username,avatar_url")
+      .order("avatar_url", { ascending: true, nullsFirst: true });
+
+    expect(error).toBeNull();
+    expect(data).toHaveLength(2);
+    // avatar_url is null for both, but nullsFirst should not error
+    expect(data![0].avatar_url).toBeNull();
+  });
+
+  it("orders with nullslast", async () => {
+    const { data, error } = await env.supabase
+      .from("profiles")
+      .select("username,avatar_url")
+      .order("avatar_url", { ascending: true, nullsFirst: false });
+
+    expect(error).toBeNull();
+    expect(data).toHaveLength(2);
+  });
+
+  it("filters with gt", async () => {
+    const { data, error } = await env.supabase
+      .from("categories")
+      .select()
+      .gt("id", 1);
+
+    expect(error).toBeNull();
+    expect(data).toHaveLength(1);
+    expect(data![0].name).toBe("Life");
+  });
+
+  it("filters with gte", async () => {
+    const { data, error } = await env.supabase
+      .from("categories")
+      .select()
+      .gte("id", 1);
+
+    expect(error).toBeNull();
+    expect(data).toHaveLength(2);
+  });
+
+  it("filters with lt", async () => {
+    const { data, error } = await env.supabase
+      .from("categories")
+      .select()
+      .lt("id", 2);
+
+    expect(error).toBeNull();
+    expect(data).toHaveLength(1);
+    expect(data![0].name).toBe("Tech");
+  });
+
+  it("filters with lte", async () => {
+    const { data, error } = await env.supabase
+      .from("categories")
+      .select()
+      .lte("id", 2);
+
+    expect(error).toBeNull();
+    expect(data).toHaveLength(2);
+  });
+
+  it("filters with like", async () => {
+    const { data, error } = await env.supabase
+      .from("posts")
+      .select()
+      .like("title", "%Post");
+
+    expect(error).toBeNull();
+    expect(data).toHaveLength(3);
+  });
+
+  it("filters with ilike", async () => {
+    const { data, error } = await env.supabase
+      .from("posts")
+      .select()
+      .ilike("title", "%post");
+
+    expect(error).toBeNull();
+    expect(data).toHaveLength(3);
+  });
+
+  it("filters with not", async () => {
+    const { data, error } = await env.supabase
+      .from("posts")
+      .select()
+      .not("title", "eq", "First Post");
+
+    expect(error).toBeNull();
+    expect(data).toHaveLength(2);
+  });
+
+  it("filters with and logical operator", async () => {
+    const { data, error } = await env.supabase
+      .from("posts")
+      .select()
+      .eq("published", true)
+      .eq("user_id", env.userId1);
+
+    expect(error).toBeNull();
+    expect(data).toHaveLength(1);
+    expect(data![0].title).toBe("First Post");
+  });
+
+  it("returns maybeSingle with one row", async () => {
+    const { data, error } = await env.supabase
+      .from("posts")
+      .select()
+      .eq("title", "First Post")
+      .maybeSingle();
+
+    expect(error).toBeNull();
+    expect(data).not.toBeNull();
+    expect(data!.title).toBe("First Post");
+  });
+
+  it("returns maybeSingle with no rows", async () => {
+    const { data, error } = await env.supabase
+      .from("posts")
+      .select()
+      .eq("title", "Nonexistent")
+      .maybeSingle();
+
+    expect(error).toBeNull();
+    expect(data).toBeNull();
+  });
 });

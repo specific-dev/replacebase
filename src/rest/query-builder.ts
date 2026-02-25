@@ -95,6 +95,11 @@ export class QueryBuilder {
             `Column '${o.column}' not found in table '${options.table}'`
           );
         }
+        const dir = o.direction === "desc" ? "DESC" : "ASC";
+        const nullsClause = o.nulls === "first" ? "NULLS FIRST" : o.nulls === "last" ? "NULLS LAST" : "";
+        if (nullsClause) {
+          return sql`${col.column} ${sql.raw(dir)} ${sql.raw(nullsClause)}`;
+        }
         const orderFn = o.direction === "desc" ? desc : asc;
         return orderFn(col.column);
       });
