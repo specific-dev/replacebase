@@ -193,9 +193,13 @@ export class QueryBuilder {
 
     let query = (this.db as any).insert(table).values(mappedRows);
 
-    // Handle upsert
-    if (options.onConflict) {
-      const conflictColumns = options.onConflict.split(",").map((c) => {
+    // Handle upsert: if resolution is set, default onConflict to primary keys
+    const onConflict = options.onConflict || (
+      options.prefer.resolution ? tableMeta.primaryKeys.join(",") : undefined
+    );
+
+    if (onConflict) {
+      const conflictColumns = onConflict.split(",").map((c) => {
         const col = tableMeta.columns.get(c.trim());
         if (!col) {
           throw new Error(`Column '${c.trim()}' not found for on_conflict`);
@@ -608,6 +612,85 @@ export class QueryBuilder {
             }
           }
         }
+      } else if (fk.direction === "many-to-many") {
+        // Many-to-many via junction table
+        const junctionMeta = fk.junctionTable!;
+        const junctionParentCol = junctionMeta.columns.get(fk.junctionParentColumn!);
+        const junctionChildCol = junctionMeta.columns.get(fk.junctionChildColumn!);
+        if (!junctionParentCol || !junctionChildCol) {
+          throw new Error(`Junction table columns not found`);
+        }
+
+        const parentIds = parentData.map((r) => r[fk.parentColumn]);
+        const uniqueParentIds = [...new Set(parentIds)];
+
+        // Query junction table
+        const junctionData = await (this.db as any)
+          .select({
+            [fk.junctionParentColumn!]: junctionParentCol.column,
+            [fk.junctionChildColumn!]: junctionChildCol.column,
+          })
+          .from(junctionMeta.table)
+          .where(inArray(junctionParentCol.column, uniqueParentIds));
+
+        if (junctionData.length === 0) {
+          for (const row of parentData) {
+            row[embeddingKey] = [];
+          }
+          continue;
+        }
+
+        // Query child table
+        const childIds = [...new Set(junctionData.map((j: any) => j[fk.junctionChildColumn!]))];
+        const childMeta2 = this.registry.getTable(emb.name)!;
+        const childPkCol = childMeta2.columns.get(fk.childColumn);
+        if (!childPkCol) {
+          throw new Error(`Column '${fk.childColumn}' not found in '${emb.name}'`);
+        }
+
+        const selectCols = this.buildEmbeddingColumns(emb, childMeta2, fk.childColumn);
+
+        const childData = await (this.db as any)
+          .select(selectCols)
+          .from(childMeta2.table)
+          .where(inArray(childPkCol.column, childIds));
+
+        // Resolve nested embeddings
+        const nestedEmbeddings = emb.columns.filter((s) => s.type === "embedding");
+        if (nestedEmbeddings.length > 0 && childData.length > 0) {
+          await this.resolveEmbeddings(childData, nestedEmbeddings, childMeta2);
+        }
+
+        // Build child lookup map
+        const childMap = new Map<string, any>();
+        for (const child of childData) {
+          childMap.set(String(child[fk.childColumn]), child);
+        }
+
+        // Group by parent via junction
+        const parentToChildren = new Map<string, any[]>();
+        for (const j of junctionData) {
+          const parentKey = String(j[fk.junctionParentColumn!]);
+          const childKey = String(j[fk.junctionChildColumn!]);
+          const child = childMap.get(childKey);
+          if (child) {
+            if (!parentToChildren.has(parentKey)) parentToChildren.set(parentKey, []);
+            parentToChildren.get(parentKey)!.push(child);
+          }
+        }
+
+        for (const row of parentData) {
+          const key = String(row[fk.parentColumn]);
+          row[embeddingKey] = parentToChildren.get(key) || [];
+        }
+
+        if (emb.inner) {
+          for (let i = parentData.length - 1; i >= 0; i--) {
+            if (parentData[i][embeddingKey].length === 0) {
+              parentData.splice(i, 1);
+            }
+          }
+        }
       } else {
         // parent-to-child: parent references child (many-to-one / one-to-one)
         const foreignIds = parentData
@@ -663,7 +746,14 @@ export class QueryBuilder {
     parentMeta: TableMeta,
     childMeta: TableMeta,
     hint?: string
-  ): { parentColumn: string; childColumn: string; direction: "child-to-parent" | "parent-to-child" } | null {
+  ): {
+    parentColumn: string;
+    childColumn: string;
+    direction: "child-to-parent" | "parent-to-child" | "many-to-many";
+    junctionTable?: TableMeta;
+    junctionParentColumn?: string;
+    junctionChildColumn?: string;
+  } | null {
     // Check if child has FK pointing to parent (one-to-many: parent has many children)
     for (const fk of childMeta.foreignKeys) {
       if (fk.foreignTable === parentMeta.name) {
@@ -688,6 +778,32 @@ export class QueryBuilder {
           parentColumn: fk.foreignColumns[0],
           childColumn: fk.columns[0],
           direction: "parent-to-child",
+        };
+      }
+    }
+
+    // Check for many-to-many via a junction table
+    for (const [, junctionMeta] of this.registry.getAllTables()) {
+      let parentFk: { columns: string[]; foreignColumns: string[] } | null = null;
+      let childFk: { columns: string[]; foreignColumns: string[] } | null = null;
+
+      for (const fk of junctionMeta.foreignKeys) {
+        if (fk.foreignTable === parentMeta.name) {
+          parentFk = fk;
+        }
+        if (fk.foreignTable === childMeta.name) {
+          childFk = fk;
+        }
+      }
+
+      if (parentFk && childFk) {
+        return {
+          parentColumn: parentFk.foreignColumns[0],
+          childColumn: childFk.foreignColumns[0],
+          direction: "many-to-many",
+          junctionTable: junctionMeta,
+          junctionParentColumn: parentFk.columns[0],
+          junctionChildColumn: childFk.columns[0],
         };
       }
     }

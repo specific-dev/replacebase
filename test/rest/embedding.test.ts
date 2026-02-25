@@ -88,4 +88,46 @@ describe("REST Resource Embedding", () => {
 
     expect(error).not.toBeNull();
   });
+
+  // Many-to-many: posts through post_categories to categories
+  it("embeds many-to-many (posts with categories)", async () => {
+    const { data, error } = await env.supabase
+      .from("posts")
+      .select("title,categories(name)")
+      .eq("title", "Third Post");
+
+    expect(error).toBeNull();
+    expect(data).toHaveLength(1);
+    expect(data![0].categories).toHaveLength(2);
+    const names = data![0].categories.map((c: any) => c.name).sort();
+    expect(names).toEqual(["Life", "Tech"]);
+  });
+
+  it("embeds many-to-many with no matches", async () => {
+    const { data, error } = await env.supabase
+      .from("posts")
+      .select("title,categories(name)")
+      .eq("title", "Second Post");
+
+    expect(error).toBeNull();
+    expect(data).toHaveLength(1);
+    expect(data![0].categories).toEqual([]);
+  });
+
+  // Nested embedding: posts -> comments -> (could add more)
+  it("embeds nested resources (posts with comments)", async () => {
+    // Test that nested embedding parsing + execution works
+    const { data, error } = await env.supabase
+      .from("posts")
+      .select("title,comments(body,posts(title))")
+      .eq("title", "First Post");
+
+    expect(error).toBeNull();
+    expect(data).toHaveLength(1);
+    expect(data![0].comments).toHaveLength(2);
+    // Each comment should have its parent post embedded
+    for (const comment of data![0].comments) {
+      expect(comment.posts).toHaveProperty("title");
+    }
+  });
 });
