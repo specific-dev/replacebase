@@ -11,8 +11,6 @@ Two Supabase services are replicated:
 
 Key constraints: framework-agnostic (Hono internally, Web Standard `fetch` handler exported), RLS enforced at Postgres level, no schema changes required to existing Supabase database (only additive tables/columns), only `jwtSecret` needed in config (API keys validated from client requests).
 
-Use Git to manage the project and make small commits regularly. Use conventional commit messages.
-
 ---
 
 ## Architecture
