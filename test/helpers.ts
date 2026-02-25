@@ -1,8 +1,8 @@
 import { serve } from "@hono/node-server";
 import { createClient } from "@supabase/supabase-js";
-import { createReplacebase, generateKeys } from "../src/index.js";
-import { createTestDb, seedTestData } from "./setup.js";
-import { testSchema } from "./fixtures/schema.js";
+import { createReplacebase, generateKeys } from "../src/index";
+import { createTestDb, seedTestData } from "./setup";
+import { testSchema } from "./fixtures/schema";
 import S3rver from "s3rver";
 import { mkdtempSync } from "fs";
 import { tmpdir } from "os";

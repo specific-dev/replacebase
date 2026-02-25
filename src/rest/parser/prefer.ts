@@ -1,4 +1,4 @@
-import type { PreferParams } from "./types.js";
+import type { PreferParams } from "./types";
 
 /**
  * Parse the Prefer header used by PostgREST.

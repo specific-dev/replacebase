@@ -1,9 +1,9 @@
-import { createApp } from "./server.js";
-import type { ReplacebaseConfig, Replacebase } from "./types.js";
+import { createApp } from "./server";
+import type { ReplacebaseConfig, Replacebase } from "./types";
 import { getRequestListener } from "@hono/node-server";
 import { SignJWT } from "jose";
 
-export type { ReplacebaseConfig, Replacebase, JwtClaims, RequestContext, StorageConfig } from "./types.js";
+export type { ReplacebaseConfig, Replacebase, JwtClaims, RequestContext, StorageConfig } from "./types";
 
 export function createReplacebase(config: ReplacebaseConfig): Replacebase {
   const app = createApp(config);

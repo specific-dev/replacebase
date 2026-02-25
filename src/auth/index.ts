@@ -2,19 +2,19 @@ import { Hono } from "hono";
 import { eq, sql } from "drizzle-orm";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import { hash, compare } from "bcryptjs";
-import { authUsers, authIdentities, authSessions } from "../db/schema.js";
-import { createAccessToken, verifyAccessToken } from "./jwt.js";
+import { authUsers, authIdentities, authSessions } from "../db/schema";
+import { createAccessToken, verifyAccessToken } from "./jwt";
 import {
   createRefreshToken,
   rotateRefreshToken,
   revokeSessionTokens,
   revokeUserTokens,
   revokeOtherSessionTokens,
-} from "./refresh-tokens.js";
+} from "./refresh-tokens";
 import {
   formatUserResponse,
   formatSessionResponse,
-} from "./user-response.js";
+} from "./user-response";
 
 function isServiceRole(c: any): boolean {
   return c.get?.("role") === "service_role";

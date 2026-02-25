@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { sql } from "drizzle-orm";
-import { createTestEnv } from "../helpers.js";
+import { createTestEnv } from "../helpers";
 
 describe("REST RPC (Stored Procedures)", () => {
   let env: Awaited<ReturnType<typeof createTestEnv>>;

@@ -1,17 +1,17 @@
 import { Hono } from "hono";
 import { sql } from "drizzle-orm";
 import type { PgDatabase } from "drizzle-orm/pg-core";
-import { SchemaRegistry } from "./schema-registry.js";
-import { QueryBuilder } from "./query-builder.js";
-import { parseSelect } from "./parser/select.js";
-import { parseFilter, parseLogicalFilter } from "./parser/filter.js";
-import { parseOrder } from "./parser/order.js";
-import { parsePagination } from "./parser/pagination.js";
-import { parsePrefer } from "./parser/prefer.js";
-import type { FilterNode } from "./parser/types.js";
-import { formatSelectResponse, formatMutationResponse } from "./response.js";
-import { withRLS } from "./rls.js";
-import type { RLSContext } from "./rls.js";
+import { SchemaRegistry } from "./schema-registry";
+import { QueryBuilder } from "./query-builder";
+import { parseSelect } from "./parser/select";
+import { parseFilter, parseLogicalFilter } from "./parser/filter";
+import { parseOrder } from "./parser/order";
+import { parsePagination } from "./parser/pagination";
+import { parsePrefer } from "./parser/prefer";
+import type { FilterNode } from "./parser/types";
+import { formatSelectResponse, formatMutationResponse } from "./response";
+import { withRLS } from "./rls";
+import type { RLSContext } from "./rls";
 
 export function createRestRouter(
   db: PgDatabase<any, any, any>,

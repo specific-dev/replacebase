@@ -1,4 +1,4 @@
-import type { ParsedSelectItem, ParsedColumn, ParsedEmbedding } from "./types.js";
+import type { ParsedSelectItem, ParsedColumn, ParsedEmbedding } from "./types";
 
 /**
  * Parse PostgREST select parameter.

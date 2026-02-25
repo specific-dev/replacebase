@@ -7,7 +7,7 @@ import {
   CopyObjectCommand,
   HeadObjectCommand,
 } from "@aws-sdk/client-s3";
-import type { StorageConfig } from "../types.js";
+import type { StorageConfig } from "../types";
 
 export interface ObjectStorageGetResult {
   body: ReadableStream;

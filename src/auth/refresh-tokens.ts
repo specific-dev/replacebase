@@ -1,6 +1,6 @@
 import { eq, and, sql } from "drizzle-orm";
 import type { PgDatabase } from "drizzle-orm/pg-core";
-import { authRefreshTokens } from "../db/schema.js";
+import { authRefreshTokens } from "../db/schema";
 import { randomBytes } from "crypto";
 
 export function generateRefreshToken(): string {

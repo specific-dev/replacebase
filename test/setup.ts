@@ -1,7 +1,7 @@
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { sql } from "drizzle-orm";
-import { testSchema } from "./fixtures/schema.js";
+import { testSchema } from "./fixtures/schema";
 
 export async function createTestDb() {
   const pglite = new PGlite();

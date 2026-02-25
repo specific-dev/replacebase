@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { createTestEnv } from "../helpers.js";
+import { createTestEnv } from "../helpers";
 
 describe("Auth Sign In", () => {
   let env: Awaited<ReturnType<typeof createTestEnv>>;

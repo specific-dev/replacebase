@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseSelect } from "./select.js";
+import { parseSelect } from "./select";
 
 describe("Select Parser", () => {
   it("parses empty string as star", () => {

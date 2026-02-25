@@ -1,4 +1,4 @@
-import type { PaginationParams } from "./types.js";
+import type { PaginationParams } from "./types";
 
 /**
  * Parse pagination from query params and Range header.

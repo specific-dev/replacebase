@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { createStorageTestEnv } from "../helpers.js";
+import { createStorageTestEnv } from "../helpers";
 
 describe("Storage Objects", () => {
   let env: Awaited<ReturnType<typeof createStorageTestEnv>>;

@@ -27,8 +27,8 @@ import type {
   OrderItem,
   PaginationParams,
   PreferParams,
-} from "./parser/types.js";
-import type { SchemaRegistry, TableMeta } from "./schema-registry.js";
+} from "./parser/types";
+import type { SchemaRegistry, TableMeta } from "./schema-registry";
 
 export interface QueryResult {
   data: any[];

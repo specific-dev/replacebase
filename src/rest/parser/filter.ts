@@ -1,4 +1,4 @@
-import type { FilterNode, FilterCondition, LogicalFilter, FilterOperator } from "./types.js";
+import type { FilterNode, FilterCondition, LogicalFilter, FilterOperator } from "./types";
 
 const OPERATORS = new Set<string>([
   "eq", "neq", "gt", "gte", "lt", "lte",

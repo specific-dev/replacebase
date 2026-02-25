@@ -1,11 +1,11 @@
 import { Hono } from "hono";
 import type { PgDatabase } from "drizzle-orm/pg-core";
-import type { ReplacebaseConfig } from "./types.js";
-import { apiKeyMiddleware } from "./middleware/api-key.js";
-import { supabaseCors } from "./middleware/cors.js";
-import { createRestRouter } from "./rest/index.js";
-import { createAuthRouter } from "./auth/index.js";
-import { createStorageRouter } from "./storage/index.js";
+import type { ReplacebaseConfig } from "./types";
+import { apiKeyMiddleware } from "./middleware/api-key";
+import { supabaseCors } from "./middleware/cors";
+import { createRestRouter } from "./rest/index";
+import { createAuthRouter } from "./auth/index";
+import { createStorageRouter } from "./storage/index";
 
 export function createApp(config: ReplacebaseConfig): Hono {
   const app = new Hono();

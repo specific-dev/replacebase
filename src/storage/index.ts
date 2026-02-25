@@ -2,14 +2,14 @@ import { Hono } from "hono";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import { eq, and, sql, ilike, asc, desc } from "drizzle-orm";
 import { SignJWT, jwtVerify } from "jose";
-import type { StorageConfig } from "../types.js";
-import { apiKeyMiddleware } from "../middleware/api-key.js";
-import { withRLS, type RLSContext } from "../rest/rls.js";
+import type { StorageConfig } from "../types";
+import { apiKeyMiddleware } from "../middleware/api-key";
+import { withRLS, type RLSContext } from "../rest/rls";
 import {
   storageBuckets,
   storageObjects,
-} from "../db/schema.js";
-import { S3ObjectStorage, type ObjectStorage } from "./s3.js";
+} from "../db/schema";
+import { S3ObjectStorage, type ObjectStorage } from "./s3";
 
 export function createStorageRouter(
   db: PgDatabase<any, any, any>,

@@ -1,6 +1,6 @@
 import type { Context } from "hono";
-import type { QueryResult } from "./query-builder.js";
-import type { PreferParams } from "./parser/types.js";
+import type { QueryResult } from "./query-builder";
+import type { PreferParams } from "./parser/types";
 
 export function formatSelectResponse(
   c: Context,

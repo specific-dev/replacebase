@@ -1,4 +1,4 @@
-import type { OrderItem } from "./types.js";
+import type { OrderItem } from "./types";
 
 /**
  * Parse PostgREST order parameter.
