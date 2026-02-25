@@ -1,21 +1,18 @@
 # Replacebase
 
-Drop-in replacement for Supabase's backend. Point your existing `@supabase/supabase-js` client at your own server and everything keeps working — no client-side code changes required.
+Drop-in replacement for Supabase's backend. Plug it into your own server, point your existing `@supabase/supabase-js` client at it, and everything keeps working. Your client code doesn't change — only the URL and API keys.
 
-Replacebase replicates the Supabase APIs your client already talks to:
+## Why
 
-- **REST API** (`/rest/v1/*`) — PostgREST-compatible CRUD, driven by Drizzle schemas
-- **Auth** (`/auth/v1/*`) — GoTrue-compatible auth (signup, signin, token refresh, user management)
-- **Storage** (`/storage/v1/*`) — S3-backed file storage with the Supabase Storage API
-- **Realtime** (`/realtime/v1/*`) — WebSocket-based Postgres changes
+Supabase is great for getting started, but at some point you may want full control over your backend: self-host, customize behavior, avoid vendor lock-in. Replacebase gives you that migration path without rewriting your frontend. It implements the same HTTP APIs that `@supabase/supabase-js` talks to — REST, Auth, Storage, and Realtime — so your client keeps working as-is.
 
-## Prerequisites
+## What you need
 
 - Your existing Supabase PostgreSQL database (Replacebase connects directly to it)
 - A [Drizzle](https://orm.drizzle.team/) schema describing your application tables
-- Your Supabase JWT secret (found in Supabase Dashboard > Settings > API)
+- Your Supabase JWT secret (found in Dashboard > Settings > API)
 
-Replacebase makes no destructive changes to your database. It adds a few nullable columns and new tables in the `auth` schema for its internal auth layer, all of which are compatible with the existing Supabase schema.
+Replacebase makes no destructive changes to your database. It only adds a few nullable columns and new tables in the `auth` schema, all compatible with the existing Supabase schema.
 
 ## Installation
 
@@ -23,7 +20,7 @@ Replacebase makes no destructive changes to your database. It adds a few nullabl
 npm install replacebase drizzle-orm postgres
 ```
 
-## Quick start
+## Getting started
 
 ### 1. Define your Drizzle schema
 
@@ -73,12 +70,12 @@ const replacebase = createReplacebase({
 
 ### 3. Generate API keys
 
-Replacebase generates its own anon and service role keys from your JWT secret. These are equivalent to the keys from your Supabase dashboard:
+Replacebase generates its own anon and service role keys from your JWT secret. These replace the keys from your Supabase dashboard:
 
 ```ts
 const keys = await generateKeys(process.env.JWT_SECRET!);
-console.log(keys.anonKey);        // Use in your client
-console.log(keys.serviceRoleKey); // Use for admin operations
+console.log(keys.anonKey);        // Replaces your Supabase anon key
+console.log(keys.serviceRoleKey); // Replaces your Supabase service role key
 ```
 
 ### 4. Serve it
@@ -110,29 +107,26 @@ const server = serve({ fetch: replacebase.fetch, port: 3000 });
 replacebase.injectWebSocket(server);
 ```
 
-### 5. Point your Supabase client at it
+### 5. Update your client config
 
-The only client-side change: swap the URL and use the new keys.
+The only change on the client side is two strings — the URL and the key:
 
 ```ts
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
-  "http://localhost:3000",  // Your Replacebase server
-  keys.anonKey              // Generated in step 3
+- "https://xyz.supabase.co",     // Old: Supabase-hosted
+- process.env.SUPABASE_ANON_KEY  // Old: Supabase dashboard key
++ "http://localhost:3000",        // New: your Replacebase server
++ process.env.REPLACEBASE_ANON_KEY // New: generated in step 3
 );
-
-// Everything works exactly as before
-const { data } = await supabase.from("posts").select("*");
-const { data: user } = await supabase.auth.signUp({
-  email: "user@example.com",
-  password: "password123",
-});
 ```
 
-## Storage (optional)
+Everything else — queries, auth, storage, realtime — works without changes.
 
-To enable Supabase Storage compatibility, provide S3 configuration:
+## Storage
+
+To use `supabase.storage` calls, provide S3 configuration. Any S3-compatible service works (AWS S3, MinIO, Cloudflare R2, etc.):
 
 ```ts
 const replacebase = createReplacebase({
@@ -152,69 +146,23 @@ const replacebase = createReplacebase({
 });
 ```
 
-Then use the standard Supabase Storage client:
+## What keeps working
 
-```ts
-await supabase.storage.from("avatars").upload("photo.png", file);
-const { data } = supabase.storage.from("avatars").getPublicUrl("photo.png");
-```
-
-## RLS
-
-Your existing Row Level Security policies continue to work. Replacebase sets the Postgres role and JWT claims on every query transaction, so `auth.uid()`, `auth.jwt()`, and role-based policies all behave identically to Supabase.
-
-## Auth
-
-Replacebase implements the GoTrue endpoints that `@supabase/supabase-js` uses:
-
-- `supabase.auth.signUp()` — email/password registration
-- `supabase.auth.signInWithPassword()` — email/password login
-- `supabase.auth.getUser()` — fetch current user
-- `supabase.auth.refreshSession()` — token refresh with rotation
-- `supabase.auth.signOut()` — session revocation
-
-Existing Supabase users are lazily migrated on first sign-in — no batch migration step needed.
+- **Queries** — `.from("table").select()`, `.insert()`, `.update()`, `.delete()`, filters, ordering, pagination, embedded resources
+- **Auth** — `.auth.signUp()`, `.auth.signInWithPassword()`, `.auth.getUser()`, `.auth.refreshSession()`, `.auth.signOut()`
+- **Row Level Security** — your existing RLS policies, `auth.uid()`, `auth.jwt()`, and role-based access all work identically
+- **Storage** — `.storage.from("bucket").upload()`, `.download()`, `.getPublicUrl()`
+- **Realtime** — `.channel("table").on("postgres_changes", ...)`
+- **Existing users** — users already in your `auth.users` table are lazily migrated on their first sign-in, no batch migration needed
 
 ## Migration checklist
 
 1. **Create a Drizzle schema** matching your Supabase tables
 2. **Deploy Replacebase** on your own server, connected to your existing database
-3. **Generate new API keys** with `generateKeys()`
-4. **Update your client** to point at your Replacebase URL with the new keys
-5. **Verify** that auth, queries, and RLS all work as expected
-6. **Remove Supabase dependency** when ready — your database and server are fully under your control
-
-## API
-
-### `createReplacebase(config)`
-
-Creates a Replacebase instance.
-
-```ts
-interface ReplacebaseConfig {
-  db: PostgresJsDatabase<any>;       // Drizzle database instance
-  schema: Record<string, unknown>;    // Drizzle schema object
-  jwtSecret: string;                  // Supabase JWT secret
-  storage?: StorageConfig;            // Optional S3 config
-}
-```
-
-Returns:
-
-| Property | Type | Description |
-|---|---|---|
-| `fetch` | `(Request) => Promise<Response>` | Web Standard fetch handler |
-| `toNodeHandler()` | `() => (req, res) => void` | Node.js HTTP handler |
-| `injectWebSocket` | `(server) => void` | Add Realtime WebSocket support to a Node HTTP server |
-| `app` | `Hono` | Raw Hono instance for advanced usage |
-
-### `generateKeys(jwtSecret)`
-
-Generates anon and service role API keys from your JWT secret.
-
-```ts
-const { anonKey, serviceRoleKey } = await generateKeys(jwtSecret);
-```
+3. **Generate API keys** with `generateKeys()`
+4. **Update your client** — swap the URL and API key
+5. **Verify** everything works as expected
+6. **Done** — your database and server are fully under your control
 
 ## License
 
