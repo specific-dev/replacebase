@@ -10,6 +10,9 @@ export async function createTestDb() {
   // Create auth schema and tables
   await createAuthTables(db);
 
+  // Create storage schema and tables
+  await createStorageTables(db);
+
   // Create app tables
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS posts (
@@ -193,6 +196,40 @@ async function createAuthTables(db: any) {
       user_agent TEXT,
       ip INET,
       tag TEXT
+    )
+  `);
+}
+
+async function createStorageTables(db: any) {
+  await db.execute(sql`CREATE SCHEMA IF NOT EXISTS storage`);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS storage.buckets (
+      id TEXT PRIMARY KEY,
+      name TEXT UNIQUE NOT NULL,
+      owner UUID,
+      owner_id TEXT,
+      public BOOLEAN DEFAULT false,
+      file_size_limit BIGINT,
+      allowed_mime_types TEXT[],
+      created_at TIMESTAMPTZ DEFAULT now(),
+      updated_at TIMESTAMPTZ DEFAULT now()
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS storage.objects (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      bucket_id TEXT REFERENCES storage.buckets(id),
+      name TEXT,
+      owner UUID,
+      owner_id TEXT,
+      metadata JSONB,
+      user_metadata JSONB,
+      version TEXT,
+      created_at TIMESTAMPTZ DEFAULT now(),
+      updated_at TIMESTAMPTZ DEFAULT now(),
+      last_accessed_at TIMESTAMPTZ
     )
   `);
 }
