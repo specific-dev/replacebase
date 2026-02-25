@@ -73,6 +73,36 @@ export class QueryBuilder {
       tableMeta
     );
 
+    // Ensure FK/PK columns needed for embeddings are included
+    const embeddings = options.select.filter((s) => s.type === "embedding");
+    const extraFkColumns: string[] = [];
+    for (const emb of embeddings) {
+      if (emb.type !== "embedding") continue;
+      const childMeta = this.registry.getTable(emb.name);
+      if (!childMeta) continue;
+      const fk = this.findForeignKey(tableMeta, childMeta, emb.hint);
+      if (!fk) continue;
+      if (fk.direction === "child-to-parent") {
+        // Need parent's PK column
+        if (!selectedColumns[fk.parentColumn]) {
+          const col = tableMeta.columns.get(fk.parentColumn);
+          if (col) {
+            selectedColumns[fk.parentColumn] = col.column;
+            extraFkColumns.push(fk.parentColumn);
+          }
+        }
+      } else {
+        // Need parent's FK column
+        if (!selectedColumns[fk.childColumn]) {
+          const col = tableMeta.columns.get(fk.childColumn);
+          if (col) {
+            selectedColumns[fk.childColumn] = col.column;
+            extraFkColumns.push(fk.childColumn);
+          }
+        }
+      }
+    }
+
     // Build where clause
     const where = this.buildWhereClause(options.filters, tableMeta);
 
@@ -133,12 +163,17 @@ export class QueryBuilder {
     }
 
     // Handle embeddings
-    const embeddings = options.select.filter(
-      (s) => s.type === "embedding"
-    );
-
     if (embeddings.length > 0 && data.length > 0) {
       await this.resolveEmbeddings(data, embeddings, tableMeta);
+    }
+
+    // Remove extra FK columns that were added for embedding joins
+    if (extraFkColumns.length > 0) {
+      for (const row of data) {
+        for (const col of extraFkColumns) {
+          delete row[col];
+        }
+      }
     }
 
     return { data, totalCount };
@@ -453,6 +488,40 @@ export class QueryBuilder {
     return values;
   }
 
+  private buildEmbeddingColumns(
+    emb: ParsedSelectItem & { type: "embedding" },
+    tableMeta: TableMeta,
+    requiredFkColumn?: string
+  ): Record<string, any> {
+    const columns: Record<string, any> = {};
+    const hasStar = emb.columns.some((s) => s.type === "star");
+    const hasOnlyEmbeddings = emb.columns.every((s) => s.type === "embedding");
+
+    if (hasStar || emb.columns.length === 0 || hasOnlyEmbeddings) {
+      // Select all columns using DB names as keys
+      for (const [colName, colMeta] of tableMeta.columns) {
+        columns[colName] = colMeta.column;
+      }
+    } else {
+      for (const item of emb.columns) {
+        if (item.type === "column") {
+          const col = tableMeta.columns.get(item.name);
+          if (col) {
+            columns[item.alias || item.name] = col.column;
+          }
+        }
+      }
+      // Always include the FK column needed for joining
+      if (requiredFkColumn && !columns[requiredFkColumn]) {
+        const fkCol = tableMeta.columns.get(requiredFkColumn);
+        if (fkCol) {
+          columns[requiredFkColumn] = fkCol.column;
+        }
+      }
+    }
+    return columns;
+  }
+
   private async resolveEmbeddings(
     parentData: any[],
     embeddings: ParsedSelectItem[],
@@ -479,18 +548,19 @@ export class QueryBuilder {
 
       if (fk.direction === "child-to-parent") {
         // Parent has many children (children reference parent)
-        // Collect parent IDs
         const parentIds = parentData.map((r) => r[fk.parentColumn]);
         const uniqueIds = [...new Set(parentIds)];
 
-        // Query children
         const childCol = childMeta.columns.get(fk.childColumn);
         if (!childCol) {
           throw new Error(`Column '${fk.childColumn}' not found in '${emb.name}'`);
         }
 
+        // Build column selection for the embedding (using DB names as keys)
+        const selectCols = this.buildEmbeddingColumns(emb, childMeta, fk.childColumn);
+
         const childData = await (this.db as any)
-          .select()
+          .select(selectCols)
           .from(childMeta.table)
           .where(inArray(childCol.column, uniqueIds));
 
@@ -499,7 +569,18 @@ export class QueryBuilder {
         for (const child of childData) {
           const key = String(child[fk.childColumn]);
           if (!grouped.has(key)) grouped.set(key, []);
-          grouped.get(key)!.push(child);
+          // Remove the FK column from output if it wasn't explicitly selected
+          const output = { ...child };
+          grouped.get(key)!.push(output);
+        }
+
+        // Resolve nested embeddings
+        const nestedEmbeddings = emb.columns.filter((s) => s.type === "embedding");
+        if (nestedEmbeddings.length > 0) {
+          const allChildren = Array.from(grouped.values()).flat();
+          if (allChildren.length > 0) {
+            await this.resolveEmbeddings(allChildren, nestedEmbeddings, childMeta);
+          }
         }
 
         // Attach to parent rows
@@ -507,7 +588,6 @@ export class QueryBuilder {
           const key = String(row[fk.parentColumn]);
           const children = grouped.get(key) || [];
           if (emb.spread) {
-            // Spread: merge child fields into parent
             if (children.length > 0) {
               Object.assign(row, children[0]);
             }
@@ -518,27 +598,18 @@ export class QueryBuilder {
 
         // Handle !inner: remove parent rows without children
         if (emb.inner) {
-          const toRemove: number[] = [];
           for (let i = parentData.length - 1; i >= 0; i--) {
             if (
               !emb.spread &&
               (!parentData[i][embeddingKey] ||
                 parentData[i][embeddingKey].length === 0)
             ) {
-              toRemove.push(i);
+              parentData.splice(i, 1);
             }
-          }
-          for (const idx of toRemove) {
-            parentData.splice(idx, 1);
           }
         }
       } else {
         // parent-to-child: parent references child (many-to-one / one-to-one)
-        const parentCol = parentMeta.columns.get(fk.childColumn);
-        if (!parentCol) {
-          throw new Error(`Column '${fk.childColumn}' not found in '${parentMeta.name}'`);
-        }
-
         const foreignIds = parentData
           .map((r) => r[fk.childColumn])
           .filter((v) => v != null);
@@ -548,7 +619,7 @@ export class QueryBuilder {
           for (const row of parentData) {
             row[embeddingKey] = null;
           }
-          return;
+          continue;
         }
 
         const pkCol = childMeta.columns.get(fk.parentColumn);
@@ -556,10 +627,19 @@ export class QueryBuilder {
           throw new Error(`Column '${fk.parentColumn}' not found in '${emb.name}'`);
         }
 
+        // Build column selection for the embedding (using DB names as keys)
+        const selectCols = this.buildEmbeddingColumns(emb, childMeta, fk.parentColumn);
+
         const childData = await (this.db as any)
-          .select()
+          .select(selectCols)
           .from(childMeta.table)
           .where(inArray(pkCol.column, uniqueIds));
+
+        // Resolve nested embeddings
+        const nestedEmbeddings = emb.columns.filter((s) => s.type === "embedding");
+        if (nestedEmbeddings.length > 0 && childData.length > 0) {
+          await this.resolveEmbeddings(childData, nestedEmbeddings, childMeta);
+        }
 
         const childMap = new Map<string, any>();
         for (const child of childData) {
