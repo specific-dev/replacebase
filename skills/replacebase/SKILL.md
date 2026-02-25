@@ -64,7 +64,7 @@ const replacebase = await createReplacebase({
     },
   },
   // Optional: Set if served from a subpath (like with Next.js)
-  baseUrl: "/",
+  basePath: "/",
 });
 ```
 
