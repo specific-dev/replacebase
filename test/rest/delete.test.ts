@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeAll } from "vitest";
-import { createTestEnv, restRequest } from "../helpers.js";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { createTestEnv } from "../helpers.js";
 
 describe("REST Delete", () => {
   let env: Awaited<ReturnType<typeof createTestEnv>>;
@@ -8,53 +8,42 @@ describe("REST Delete", () => {
     env = await createTestEnv();
   });
 
-  it("deletes rows matching filter", async () => {
-    // First verify the row exists
-    let res = await restRequest(
-      env.replacebase,
-      "/posts?title=eq.Second Post",
-      { apiKey: env.anonKey }
-    );
-    let data = await res.json();
-    expect(data).toHaveLength(1);
+  afterAll(() => env.cleanup());
 
-    // Delete with return=representation (Second Post has no comments)
-    res = await restRequest(
-      env.replacebase,
-      "/posts?title=eq.Second Post",
-      {
-        method: "DELETE",
-        apiKey: env.anonKey,
-        headers: { Prefer: "return=representation" },
-      }
-    );
+  it("deletes rows matching filter and returns them", async () => {
+    // Verify the row exists
+    const { data: before } = await env.supabase
+      .from("posts")
+      .select()
+      .eq("title", "Second Post");
+    expect(before).toHaveLength(1);
 
-    expect(res.status).toBe(200);
-    data = await res.json();
+    // Delete with return (Second Post has no comments)
+    const { data, error } = await env.supabase
+      .from("posts")
+      .delete()
+      .eq("title", "Second Post")
+      .select();
+
+    expect(error).toBeNull();
     expect(data).toHaveLength(1);
-    expect(data[0].title).toBe("Second Post");
+    expect(data![0].title).toBe("Second Post");
 
     // Verify it's gone
-    res = await restRequest(
-      env.replacebase,
-      "/posts?title=eq.Second Post",
-      { apiKey: env.anonKey }
-    );
-    data = await res.json();
-    expect(data).toHaveLength(0);
+    const { data: after } = await env.supabase
+      .from("posts")
+      .select()
+      .eq("title", "Second Post");
+    expect(after).toHaveLength(0);
   });
 
-  it("returns 204 for minimal delete", async () => {
-    // Delete a profile (no FK references to profiles)
-    const res = await restRequest(
-      env.replacebase,
-      `/profiles?id=eq.${env.userId2}`,
-      {
-        method: "DELETE",
-        apiKey: env.anonKey,
-      }
-    );
+  it("deletes without returning data", async () => {
+    const { data, error } = await env.supabase
+      .from("profiles")
+      .delete()
+      .eq("id", env.userId2);
 
-    expect(res.status).toBe(204);
+    expect(error).toBeNull();
+    expect(data).toBeNull();
   });
 });

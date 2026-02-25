@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeAll } from "vitest";
-import { createTestEnv, restRequest } from "../helpers.js";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { createTestEnv } from "../helpers.js";
 
 describe("REST Update", () => {
   let env: Awaited<ReturnType<typeof createTestEnv>>;
@@ -8,36 +8,28 @@ describe("REST Update", () => {
     env = await createTestEnv();
   });
 
-  it("updates rows matching filter", async () => {
-    const res = await restRequest(
-      env.replacebase,
-      "/posts?title=eq.First Post",
-      {
-        method: "PATCH",
-        apiKey: env.anonKey,
-        body: { body: "Updated body" },
-        headers: { Prefer: "return=representation" },
-      }
-    );
+  afterAll(() => env.cleanup());
 
-    expect(res.status).toBe(200);
-    const data = await res.json();
+  it("updates rows matching filter and returns them", async () => {
+    const { data, error } = await env.supabase
+      .from("posts")
+      .update({ body: "Updated body" })
+      .eq("title", "First Post")
+      .select();
+
+    expect(error).toBeNull();
     expect(data).toHaveLength(1);
-    expect(data[0].body).toBe("Updated body");
-    expect(data[0].title).toBe("First Post");
+    expect(data![0].body).toBe("Updated body");
+    expect(data![0].title).toBe("First Post");
   });
 
-  it("returns 204 for minimal prefer", async () => {
-    const res = await restRequest(
-      env.replacebase,
-      "/posts?title=eq.Second Post",
-      {
-        method: "PATCH",
-        apiKey: env.anonKey,
-        body: { published: true },
-      }
-    );
+  it("updates without returning data", async () => {
+    const { data, error } = await env.supabase
+      .from("posts")
+      .update({ published: true })
+      .eq("title", "Second Post");
 
-    expect(res.status).toBe(204);
+    expect(error).toBeNull();
+    expect(data).toBeNull();
   });
 });

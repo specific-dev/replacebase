@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeAll } from "vitest";
-import { createTestEnv, restRequest } from "../helpers.js";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { createTestEnv } from "../helpers.js";
 
 describe("REST Insert", () => {
   let env: Awaited<ReturnType<typeof createTestEnv>>;
@@ -8,52 +8,45 @@ describe("REST Insert", () => {
     env = await createTestEnv();
   });
 
-  it("inserts a row", async () => {
-    const res = await restRequest(env.replacebase, "/posts", {
-      method: "POST",
-      apiKey: env.anonKey,
-      body: {
+  afterAll(() => env.cleanup());
+
+  it("inserts a row and returns it", async () => {
+    const { data, error } = await env.supabase
+      .from("posts")
+      .insert({
         title: "New Post",
         body: "New body",
         user_id: env.userId1,
-      },
-      headers: { Prefer: "return=representation" },
-    });
+      })
+      .select();
 
-    expect(res.status).toBe(201);
-    const data = await res.json();
+    expect(error).toBeNull();
     expect(data).toHaveLength(1);
-    expect(data[0].title).toBe("New Post");
-    expect(data[0].id).toBeDefined();
+    expect(data![0].title).toBe("New Post");
+    expect(data![0].id).toBeDefined();
   });
 
   it("inserts multiple rows", async () => {
-    const res = await restRequest(env.replacebase, "/posts", {
-      method: "POST",
-      apiKey: env.anonKey,
-      body: [
+    const { data, error } = await env.supabase
+      .from("posts")
+      .insert([
         { title: "Batch 1", body: "b1", user_id: env.userId1 },
         { title: "Batch 2", body: "b2", user_id: env.userId2 },
-      ],
-      headers: { Prefer: "return=representation" },
-    });
+      ])
+      .select();
 
-    expect(res.status).toBe(201);
-    const data = await res.json();
+    expect(error).toBeNull();
     expect(data).toHaveLength(2);
   });
 
-  it("returns 201 with no body for minimal prefer", async () => {
-    const res = await restRequest(env.replacebase, "/posts", {
-      method: "POST",
-      apiKey: env.anonKey,
-      body: {
-        title: "Minimal Post",
-        body: "minimal",
-        user_id: env.userId1,
-      },
+  it("inserts without returning data", async () => {
+    const { data, error } = await env.supabase.from("posts").insert({
+      title: "Minimal Post",
+      body: "minimal",
+      user_id: env.userId1,
     });
 
-    expect(res.status).toBe(201);
+    expect(error).toBeNull();
+    expect(data).toBeNull();
   });
 });

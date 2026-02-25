@@ -1,61 +1,32 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createTestEnv } from "../helpers.js";
 
 describe("Auth Logout", () => {
   let env: Awaited<ReturnType<typeof createTestEnv>>;
-  let accessToken: string;
   let refreshToken: string;
 
   beforeAll(async () => {
     env = await createTestEnv();
 
-    // Sign up
-    const signupReq = new Request("http://localhost/auth/v1/signup", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: env.anonKey,
-        Authorization: `Bearer ${env.anonKey}`,
-      },
-      body: JSON.stringify({
-        email: "logout@example.com",
-        password: "password123",
-      }),
+    const { data } = await env.supabase.auth.signUp({
+      email: "logout@example.com",
+      password: "password123",
     });
-    const res = await env.replacebase.fetch(signupReq);
-    const data = await res.json();
-    accessToken = data.access_token;
-    refreshToken = data.refresh_token;
+    refreshToken = data.session!.refresh_token;
   });
 
-  it("logs out successfully", async () => {
-    const request = new Request("http://localhost/auth/v1/logout", {
-      method: "POST",
-      headers: {
-        apikey: env.anonKey,
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
+  afterAll(() => env.cleanup());
 
-    const response = await env.replacebase.fetch(request);
-    expect(response.status).toBe(204);
+  it("logs out successfully", async () => {
+    const { error } = await env.supabase.auth.signOut();
+    expect(error).toBeNull();
   });
 
   it("refresh token is revoked after logout", async () => {
-    const request = new Request(
-      "http://localhost/auth/v1/token?grant_type=refresh_token",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: env.anonKey,
-          Authorization: `Bearer ${env.anonKey}`,
-        },
-        body: JSON.stringify({ refresh_token: refreshToken }),
-      }
-    );
+    const { error } = await env.supabase.auth.refreshSession({
+      refresh_token: refreshToken,
+    });
 
-    const response = await env.replacebase.fetch(request);
-    expect(response.status).toBe(400);
+    expect(error).not.toBeNull();
   });
 });

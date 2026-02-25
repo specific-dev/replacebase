@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createTestEnv } from "../helpers.js";
 
 describe("Auth Sign In", () => {
@@ -7,89 +7,43 @@ describe("Auth Sign In", () => {
   beforeAll(async () => {
     env = await createTestEnv();
 
-    // Create a user to sign in with
-    const request = new Request("http://localhost/auth/v1/signup", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: env.anonKey,
-        Authorization: `Bearer ${env.anonKey}`,
-      },
-      body: JSON.stringify({
-        email: "signin@example.com",
-        password: "password123",
-      }),
+    await env.supabase.auth.signUp({
+      email: "signin@example.com",
+      password: "password123",
     });
-    await env.replacebase.fetch(request);
   });
 
+  afterAll(() => env.cleanup());
+
   it("signs in with correct credentials", async () => {
-    const request = new Request(
-      "http://localhost/auth/v1/token?grant_type=password",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: env.anonKey,
-          Authorization: `Bearer ${env.anonKey}`,
-        },
-        body: JSON.stringify({
-          email: "signin@example.com",
-          password: "password123",
-        }),
-      }
-    );
+    const { data, error } = await env.supabase.auth.signInWithPassword({
+      email: "signin@example.com",
+      password: "password123",
+    });
 
-    const response = await env.replacebase.fetch(request);
-    expect(response.status).toBe(200);
-
-    const data = await response.json();
-    expect(data.access_token).toBeDefined();
-    expect(data.refresh_token).toBeDefined();
-    expect(data.user.email).toBe("signin@example.com");
+    expect(error).toBeNull();
+    expect(data.user?.email).toBe("signin@example.com");
+    expect(data.session?.access_token).toBeDefined();
+    expect(data.session?.refresh_token).toBeDefined();
   });
 
   it("rejects incorrect password", async () => {
-    const request = new Request(
-      "http://localhost/auth/v1/token?grant_type=password",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: env.anonKey,
-          Authorization: `Bearer ${env.anonKey}`,
-        },
-        body: JSON.stringify({
-          email: "signin@example.com",
-          password: "wrongpassword",
-        }),
-      }
-    );
+    const { data, error } = await env.supabase.auth.signInWithPassword({
+      email: "signin@example.com",
+      password: "wrongpassword",
+    });
 
-    const response = await env.replacebase.fetch(request);
-    expect(response.status).toBe(400);
-    const data = await response.json();
-    expect(data.error).toBe("invalid_grant");
+    expect(error).not.toBeNull();
+    expect(data.user).toBeNull();
   });
 
   it("rejects non-existent user", async () => {
-    const request = new Request(
-      "http://localhost/auth/v1/token?grant_type=password",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: env.anonKey,
-          Authorization: `Bearer ${env.anonKey}`,
-        },
-        body: JSON.stringify({
-          email: "noexist@example.com",
-          password: "password123",
-        }),
-      }
-    );
+    const { data, error } = await env.supabase.auth.signInWithPassword({
+      email: "noexist@example.com",
+      password: "password123",
+    });
 
-    const response = await env.replacebase.fetch(request);
-    expect(response.status).toBe(400);
+    expect(error).not.toBeNull();
+    expect(data.user).toBeNull();
   });
 });
