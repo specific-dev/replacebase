@@ -67,7 +67,16 @@ export async function createStorageTestEnv() {
     silent: true,
     directory: s3Dir,
     resetOnClose: true,
-    configureBuckets: [{ name: "test-bucket" }],
+    configureBuckets: [
+      { name: "test-bucket" },
+      { name: "files" },
+      { name: "my-bucket" },
+      { name: "constrained-bucket" },
+      { name: "non-empty-bucket" },
+      { name: "public-bucket" },
+      { name: "private-bucket" },
+      { name: "signed-test" },
+    ],
   });
   const s3Address = await s3Server.run();
 
