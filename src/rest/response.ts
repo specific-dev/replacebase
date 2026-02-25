@@ -53,14 +53,24 @@ export function formatMutationResponse(
   c: Context,
   data: any[],
   prefer: PreferParams,
-  method: "POST" | "PATCH" | "DELETE"
+  method: "POST" | "PATCH" | "DELETE",
+  count?: number
 ): Response {
   if (prefer.return === "representation") {
     const status = method === "POST" ? 201 : 200;
-    return c.json(data, status);
+    const response = c.json(data, status);
+    if (count !== undefined) {
+      const end = data.length > 0 ? data.length - 1 : 0;
+      response.headers.set("Content-Range", `*/${count}`);
+    }
+    return response;
   }
 
   // Minimal or no preference
   const status = method === "POST" ? 201 : 204;
-  return c.body(null, status);
+  const response = c.body(null, status);
+  if (count !== undefined) {
+    response.headers.set("Content-Range", `*/${count}`);
+  }
+  return response;
 }

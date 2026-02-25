@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { sql } from "drizzle-orm";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import { SchemaRegistry } from "./schema-registry.js";
 import { QueryBuilder } from "./query-builder.js";
@@ -18,6 +19,60 @@ export function createRestRouter(
 ): Hono {
   const app = new Hono();
   const registry = new SchemaRegistry(schema);
+
+  // POST /rpc/:function_name - RPC call
+  app.post("/rpc/:function_name", async (c) => {
+    const functionName = c.req.param("function_name");
+    const body = await c.req.json().catch(() => ({}));
+
+    const rlsContext = getRLSContext(c);
+
+    try {
+      const rawResult = await withRLS(db, rlsContext, async (tx) => {
+        // Build parameter list for the function call
+        const paramNames = Object.keys(body);
+        const paramValues = Object.values(body);
+
+        if (paramNames.length === 0) {
+          return await (tx as any).execute(
+            sql.raw(`SELECT * FROM "${functionName}"()`)
+          );
+        }
+
+        // Build parameterized SQL: SELECT * FROM function_name(param1 := $1, param2 := $2, ...)
+        const parts: any[] = [];
+        parts.push(sql.raw(`SELECT * FROM "${functionName}"(`));
+        for (let i = 0; i < paramNames.length; i++) {
+          if (i > 0) parts.push(sql.raw(`, `));
+          parts.push(sql.raw(`"${paramNames[i]}" := `));
+          parts.push(sql`${paramValues[i]}`);
+        }
+        parts.push(sql.raw(`)`));
+
+        const query = sql.join(parts, sql.raw(""));
+        return await (tx as any).execute(query);
+      });
+
+      // Normalize: PGlite returns { rows }, postgres.js returns array directly
+      const rows = Array.isArray(rawResult) ? rawResult : rawResult.rows || [];
+
+      // If result is a single row with a single column named after the function,
+      // return the scalar value (PostgREST convention)
+      if (rows.length === 1) {
+        const keys = Object.keys(rows[0]);
+        if (keys.length === 1 && keys[0] === functionName) {
+          return c.json(rows[0][functionName], 200);
+        }
+      }
+
+      return c.json(rows, 200);
+    } catch (error: any) {
+      return c.json(
+        { message: error.message, code: "PGRST000" },
+        error.message.includes("not found") || error.message.includes("does not exist") ? 404 : 400
+      );
+    }
+  });
 
   // GET /:table - Select
   app.get("/:table", async (c) => {
@@ -89,7 +144,8 @@ export function createRestRouter(
         });
       });
 
-      return formatMutationResponse(c, result, prefer, "POST");
+      const count = prefer.count === "exact" ? result.length : undefined;
+      return formatMutationResponse(c, result, prefer, "POST", count);
     } catch (error: any) {
       return c.json({ message: error.message, code: "PGRST000" }, 400);
     }
@@ -117,7 +173,8 @@ export function createRestRouter(
         });
       });
 
-      return formatMutationResponse(c, result, prefer, "PATCH");
+      const count = prefer.count === "exact" ? result.length : undefined;
+      return formatMutationResponse(c, result, prefer, "PATCH", count);
     } catch (error: any) {
       return c.json({ message: error.message, code: "PGRST000" }, 400);
     }
@@ -144,7 +201,8 @@ export function createRestRouter(
         });
       });
 
-      return formatMutationResponse(c, result, prefer, "DELETE");
+      const count = prefer.count === "exact" ? result.length : undefined;
+      return formatMutationResponse(c, result, prefer, "DELETE", count);
     } catch (error: any) {
       return c.json({ message: error.message, code: "PGRST000" }, 400);
     }

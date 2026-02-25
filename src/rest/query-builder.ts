@@ -230,7 +230,7 @@ export class QueryBuilder {
       }
     }
 
-    if (options.prefer.return === "representation") {
+    if (options.prefer.return === "representation" || options.prefer.count === "exact") {
       query = query.returning();
     }
 
@@ -255,7 +255,7 @@ export class QueryBuilder {
       query = query.where(where);
     }
 
-    if (options.prefer.return === "representation") {
+    if (options.prefer.return === "representation" || options.prefer.count === "exact") {
       query = query.returning();
     }
 
@@ -278,7 +278,7 @@ export class QueryBuilder {
       query = query.where(where);
     }
 
-    if (options.prefer.return === "representation") {
+    if (options.prefer.return === "representation" || options.prefer.count === "exact") {
       query = query.returning();
     }
 

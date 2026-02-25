@@ -49,4 +49,20 @@ describe("REST Insert", () => {
     expect(error).toBeNull();
     expect(data).toBeNull();
   });
+
+  it("inserts with exact count", async () => {
+    const { count, error } = await env.supabase
+      .from("posts")
+      .insert(
+        [
+          { title: "Count 1", body: "c1", user_id: env.userId1 },
+          { title: "Count 2", body: "c2", user_id: env.userId1 },
+        ],
+        { count: "exact" }
+      )
+      .select();
+
+    expect(error).toBeNull();
+    expect(count).toBe(2);
+  });
 });
