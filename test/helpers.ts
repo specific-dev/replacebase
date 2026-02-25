@@ -27,6 +27,9 @@ export async function createTestEnv() {
     port: 0,
   });
 
+  // Inject WebSocket handling for Realtime support
+  replacebase.injectWebSocket(server);
+
   const address = server.address();
   const port = typeof address === "object" && address ? address.port : 0;
 

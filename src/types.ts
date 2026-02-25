@@ -23,6 +23,8 @@ export interface ReplacebaseConfig {
 export interface Replacebase {
   fetch: (request: Request) => Response | Promise<Response>;
   toNodeHandler: () => (req: any, res: any) => void;
+  /** Inject WebSocket handling into a Node.js HTTP server for Realtime support */
+  injectWebSocket: (server: any) => void;
   app: Hono;
 }
 
