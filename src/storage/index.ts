@@ -862,7 +862,9 @@ async function handleUpload(
       );
       objectId = existing.id;
     } else {
-      const [inserted] = await withRLS(db, ctx, (tx) =>
+      // Use upsert because Supabase auto-syncs S3 uploads to storage.objects,
+      // so a record may already exist by the time we INSERT.
+      const [upserted] = await withRLS(db, ctx, (tx) =>
         tx
           .insert(storageObjects)
           .values({
@@ -873,9 +875,19 @@ async function handleUpload(
             metadata,
             userMetadata: userMetadata || undefined,
           })
+          .onConflictDoUpdate({
+            target: [storageObjects.bucketId, storageObjects.name],
+            set: {
+              metadata,
+              userMetadata: userMetadata || undefined,
+              owner: ctx.userId || undefined,
+              ownerId: ctx.userId || undefined,
+              updatedAt: new Date(),
+            },
+          })
           .returning({ id: storageObjects.id })
       );
-      objectId = inserted.id;
+      objectId = upserted.id;
     }
 
     return c.json({
@@ -947,38 +959,28 @@ async function upsertObject(
     metadata: Record<string, unknown>;
   }
 ) {
-  const [existing] = await db
-    .select()
-    .from(storageObjects)
-    .where(
-      and(
-        eq(storageObjects.bucketId, values.bucketId),
-        eq(storageObjects.name, values.name)
-      )
-    );
-
-  if (existing) {
-    await db
-      .update(storageObjects)
-      .set({
+  // Use atomic upsert because Supabase auto-syncs S3 uploads to storage.objects,
+  // so a record may already exist by the time we INSERT.
+  const [result] = await db
+    .insert(storageObjects)
+    .values({
+      bucketId: values.bucketId,
+      name: values.name,
+      owner: values.owner || undefined,
+      ownerId: values.ownerId || undefined,
+      metadata: values.metadata,
+    })
+    .onConflictDoUpdate({
+      target: [storageObjects.bucketId, storageObjects.name],
+      set: {
         metadata: values.metadata,
-        updatedAt: new Date(),
-      })
-      .where(eq(storageObjects.id, existing.id));
-    return existing.id;
-  } else {
-    const [inserted] = await db
-      .insert(storageObjects)
-      .values({
-        bucketId: values.bucketId,
-        name: values.name,
         owner: values.owner || undefined,
         ownerId: values.ownerId || undefined,
-        metadata: values.metadata,
-      })
-      .returning({ id: storageObjects.id });
-    return inserted.id;
-  }
+        updatedAt: new Date(),
+      },
+    })
+    .returning({ id: storageObjects.id });
+  return result.id;
 }
 
 async function createSignedToken(

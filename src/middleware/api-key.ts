@@ -1,9 +1,7 @@
 import { createMiddleware } from "hono/factory";
-import { jwtVerify } from "jose";
+import type { JwtKeys } from "../keys";
 
-export function apiKeyMiddleware(jwtSecret: string) {
-  const secret = new TextEncoder().encode(jwtSecret);
-
+export function apiKeyMiddleware(keys: JwtKeys) {
   return createMiddleware(async (c, next) => {
     const apiKey = c.req.header("apikey");
 
@@ -14,7 +12,7 @@ export function apiKeyMiddleware(jwtSecret: string) {
     // Verify apikey JWT
     let apiKeyPayload: any;
     try {
-      const result = await jwtVerify(apiKey, secret);
+      const result = await keys.verify(apiKey);
       apiKeyPayload = result.payload;
     } catch {
       return c.json({ message: "Invalid API key" }, 401);
@@ -32,7 +30,7 @@ export function apiKeyMiddleware(jwtSecret: string) {
       // Only verify if it's different from the apikey (user token)
       if (token !== apiKey) {
         try {
-          const result = await jwtVerify(token, secret);
+          const result = await keys.verify(token);
           const payload = result.payload;
 
           role = (payload.role as string) || "authenticated";

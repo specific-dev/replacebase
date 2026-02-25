@@ -1,4 +1,5 @@
-import { SignJWT, jwtVerify } from "jose";
+import { SignJWT } from "jose";
+import type { JwtKeys } from "../keys";
 
 export interface SupabaseJwtPayload {
   sub: string;
@@ -14,29 +15,26 @@ export interface SupabaseJwtPayload {
 }
 
 export async function createAccessToken(
-  jwtSecret: string,
+  keys: JwtKeys,
   payload: SupabaseJwtPayload,
   expiresInSeconds: number = 3600
 ): Promise<string> {
-  const secret = new TextEncoder().encode(jwtSecret);
-
   return await new SignJWT({
     ...payload,
     iss: "replacebase",
     aud: "authenticated",
   })
-    .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+    .setProtectedHeader({ alg: keys.algorithm, typ: "JWT" })
     .setSubject(payload.sub)
     .setIssuedAt()
     .setExpirationTime(`${expiresInSeconds}s`)
-    .sign(secret);
+    .sign(keys.signingKey);
 }
 
 export async function verifyAccessToken(
-  jwtSecret: string,
+  keys: JwtKeys,
   token: string
 ): Promise<SupabaseJwtPayload> {
-  const secret = new TextEncoder().encode(jwtSecret);
-  const { payload } = await jwtVerify(token, secret);
+  const { payload } = await keys.verify(token);
   return payload as unknown as SupabaseJwtPayload;
 }

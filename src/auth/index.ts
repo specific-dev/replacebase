@@ -15,6 +15,7 @@ import {
   formatUserResponse,
   formatSessionResponse,
 } from "./user-response";
+import type { JwtKeys } from "../keys";
 
 function isServiceRole(c: any): boolean {
   return c.get?.("role") === "service_role";
@@ -22,7 +23,7 @@ function isServiceRole(c: any): boolean {
 
 export function createAuthRouter(
   db: PgDatabase<any, any, any>,
-  jwtSecret: string
+  keys: JwtKeys
 ): Hono {
   const app = new Hono();
 
@@ -33,7 +34,7 @@ export function createAuthRouter(
 
     // Handle anonymous sign-up (no email/password)
     if (!email && !password) {
-      return await handleAnonymousSignup(c, db, jwtSecret, userData);
+      return await handleAnonymousSignup(c, db, keys, userData);
     }
 
     if (!email || !password) {
@@ -109,7 +110,7 @@ export function createAuthRouter(
       .returning();
 
     // Generate tokens
-    const accessToken = await createAccessToken(jwtSecret, {
+    const accessToken = await createAccessToken(keys, {
       sub: user.id,
       role: "authenticated",
       aal: "aal1",
@@ -136,9 +137,9 @@ export function createAuthRouter(
     const body = await c.req.json();
 
     if (grantType === "password") {
-      return await handlePasswordGrant(c, db, jwtSecret, body);
+      return await handlePasswordGrant(c, db, keys, body);
     } else if (grantType === "refresh_token") {
-      return await handleRefreshGrant(c, db, jwtSecret, body);
+      return await handleRefreshGrant(c, db, keys, body);
     } else {
       return c.json({ error: "unsupported_grant_type" }, 400);
     }
@@ -189,7 +190,7 @@ export function createAuthRouter(
     const token = authHeader.replace(/^Bearer\s+/i, "");
     let payload;
     try {
-      payload = await verifyAccessToken(jwtSecret, token);
+      payload = await verifyAccessToken(keys, token);
     } catch {
       return c.json({ error: "invalid_token" }, 401);
     }
@@ -226,7 +227,7 @@ export function createAuthRouter(
     const token = authHeader.replace(/^Bearer\s+/i, "");
     let payload;
     try {
-      payload = await verifyAccessToken(jwtSecret, token);
+      payload = await verifyAccessToken(keys, token);
     } catch {
       return c.json({ error: "invalid_token" }, 401);
     }
@@ -287,7 +288,7 @@ export function createAuthRouter(
     const token = authHeader.replace(/^Bearer\s+/i, "");
     let payload;
     try {
-      payload = await verifyAccessToken(jwtSecret, token);
+      payload = await verifyAccessToken(keys, token);
     } catch {
       return c.json({ error: "invalid_token" }, 401);
     }
@@ -576,7 +577,7 @@ export function createAuthRouter(
 async function handleAnonymousSignup(
   c: any,
   db: PgDatabase<any, any, any>,
-  jwtSecret: string,
+  keys: JwtKeys,
   userData?: Record<string, any>
 ) {
   const now = new Date();
@@ -606,7 +607,7 @@ async function handleAnonymousSignup(
     })
     .returning();
 
-  const accessToken = await createAccessToken(jwtSecret, {
+  const accessToken = await createAccessToken(keys, {
     sub: user.id,
     role: "authenticated",
     aal: "aal1",
@@ -628,7 +629,7 @@ async function handleAnonymousSignup(
 async function handlePasswordGrant(
   c: any,
   db: PgDatabase<any, any, any>,
-  jwtSecret: string,
+  keys: JwtKeys,
   body: { email?: string; password?: string }
 ) {
   const { email, password } = body;
@@ -695,7 +696,7 @@ async function handlePasswordGrant(
     .returning();
 
   // Generate tokens
-  const accessToken = await createAccessToken(jwtSecret, {
+  const accessToken = await createAccessToken(keys, {
     sub: user.id,
     role: "authenticated",
     aal: "aal1",
@@ -722,7 +723,7 @@ async function handlePasswordGrant(
 async function handleRefreshGrant(
   c: any,
   db: PgDatabase<any, any, any>,
-  jwtSecret: string,
+  keys: JwtKeys,
   body: { refresh_token?: string }
 ) {
   const { refresh_token } = body;
@@ -752,7 +753,7 @@ async function handleRefreshGrant(
   const user = users[0];
   const now = new Date();
 
-  const accessToken = await createAccessToken(jwtSecret, {
+  const accessToken = await createAccessToken(keys, {
     sub: user.id,
     role: "authenticated",
     aal: "aal1",

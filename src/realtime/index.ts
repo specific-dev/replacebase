@@ -1,7 +1,7 @@
 import type { Context } from "hono";
 import type { WSContext, WSEvents } from "hono/ws";
-import { jwtVerify } from "jose";
 import { createMiddleware } from "hono/factory";
+import type { JwtKeys } from "../keys";
 import {
   ChannelManager,
   parseMessage,
@@ -18,9 +18,8 @@ import {
   type JoinPayload,
 } from "./channel.js";
 
-export function createRealtimeHandler(jwtSecret: string) {
+export function createRealtimeHandler(keys: JwtKeys) {
   const channelManager = new ChannelManager();
-  const secret = new TextEncoder().encode(jwtSecret);
 
   function sendReply(
     ws: WSContext,
@@ -142,7 +141,7 @@ export function createRealtimeHandler(jwtSecret: string) {
       return c.text("Missing apikey", 401);
     }
     try {
-      await jwtVerify(apikey, secret);
+      await keys.verify(apikey);
     } catch {
       return c.text("Invalid API key", 401);
     }
