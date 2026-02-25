@@ -48,13 +48,14 @@ You need the following from your Supabase project:
 ### 2. Initialize Replacebase
 
 ```ts
-import { createReplacebase } from "@specific.dev/replacebase";
+// server.ts
+import { createReplacebase } from "replacebase";
 
 const replacebase = await createReplacebase({
-  databaseUrl: process.env.DATABASE_URL!,
-  jwksUrl: process.env.JWKS_URL!,
-  jwtSecret: process.env.JWT_SECRET!,
-  // Optional: S3 storage config
+  databaseUrl: process.env.DATABASE_URL!, // Supabase Postgres connection string
+  jwksUrl: process.env.JWKS_URL!, // Supabase JWT Signing Key URL
+  jwtSecret: process.env.JWT_SECRET!, // Supabase JWT secret
+  // If using storage, pass Supabase S3 details
   storage: {
     s3: {
       endpoint: process.env.S3_ENDPOINT!,
@@ -63,8 +64,6 @@ const replacebase = await createReplacebase({
       secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
     },
   },
-  // Optional: Set if served from a subpath (like with Next.js)
-  basePath: "/",
 });
 ```
 
@@ -74,8 +73,15 @@ Replacebase is framework-agnostic. Pick whichever fits your stack:
 
 **Next.js:**
 
+Since Next.js catch-all routes are mounted under a subpath, use the `basePath` option so Replacebase matches routes correctly:
+
 ```ts
 // app/api/[...path]/route.ts
+const replacebase = await createReplacebase({
+  // ...
+  basePath: "/api",
+});
+
 export const GET = replacebase.fetch;
 export const POST = replacebase.fetch;
 export const PUT = replacebase.fetch;
@@ -83,7 +89,7 @@ export const PATCH = replacebase.fetch;
 export const DELETE = replacebase.fetch;
 ```
 
-Note: Next.js API routes don't support WebSockets, so Realtime won't work. Run Replacebase as a separate service if you need Realtime.
+Note: Next.js API routes don't support WebSockets, so Realtime won't work with this setup. If you need Realtime, run Replacebase as a separate backend service.
 
 **Express:**
 
@@ -93,16 +99,16 @@ import express from "express";
 const app = express();
 app.all("/*", replacebase.toNodeHandler());
 const server = app.listen(3000);
-replacebase.injectWebSocket(server); // Enables Realtime
+replacebase.injectWebSocket(server); // Enables Realtime (broadcast + presence)
 ```
 
-**Hono / Bun / Deno / Cloudflare Workers:**
+**Hono / Bun / Deno / Cloudflare Workers (standard fetch):**
 
 ```ts
 export default { fetch: replacebase.fetch };
 ```
 
-For Realtime on Node.js with Hono:
+For Realtime support on Node.js, use `@hono/node-server` to get an HTTP server you can inject WebSockets into:
 
 ```ts
 import { serve } from "@hono/node-server";
@@ -126,13 +132,13 @@ const supabase = createClient(
 
 ## Configuration Reference
 
-| Option        | Type       | Required | Description                                        |
-| ------------- | ---------- | -------- | -------------------------------------------------- |
-| `databaseUrl` | `string`   | Yes      | Postgres connection string                         |
-| `jwtSecret`   | `string`   | Yes      | Supabase legacy JWT secret (HS256 signing key)     |
-| `jwksUrl`     | `string`   | No       | Full URL to Supabase JWKS endpoint                 |
-| `storage`     | `object`   | No       | S3-compatible storage configuration                |
-| `schemas`     | `string[]` | No       | Postgres schemas to expose (default: `["public"]`) |
+| Option        | Type     | Required | Description                                              |
+| ------------- | -------- | -------- | -------------------------------------------------------- |
+| `databaseUrl` | `string` | Yes      | Postgres connection string                               |
+| `jwtSecret`   | `string` | Yes      | Supabase legacy JWT secret (HS256 signing key)           |
+| `jwksUrl`     | `string` | No       | Supabase JWT Signing Key URL (JWKS endpoint)             |
+| `storage`     | `object` | No       | S3-compatible storage configuration                      |
+| `basePath`    | `string` | No       | Base path prefix if served from a subpath (e.g. `"/api"`) |
 
 ## Exported API
 
