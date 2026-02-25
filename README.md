@@ -27,7 +27,7 @@ npm install @specific.dev/replacebase
 
 For this guide, we will use your existing Postgres database and Supabase-provided S3-storage and connect Replacebase.
 
-We also offer a skill to let your coding agent help with the migration: `npx skills add @specific.dev/replacebase`
+We also offer a skill to let your coding agent help with the migration: `npx skills add specific-dev/replacebase`
 
 ### 1. Get your Supabase details
 
