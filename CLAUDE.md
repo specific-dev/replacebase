@@ -1,8 +1,8 @@
-# Replacebase
+# Replace-a-base
 
 ## Context
 
-Replacebase is a TypeScript library that serves as a drop-in replacement for Supabase's backend. Users plug it into their own server (Express, Hono, etc.), point their existing `@supabase/supabase-js` client at it, and everything keeps working. This enables gradual migration away from Supabase's managed platform.
+Replace-a-base is a TypeScript library that serves as a drop-in replacement for Supabase's backend. Users plug it into their own server (Express, Hono, etc.), point their existing `@supabase/supabase-js` client at it, and everything keeps working. This enables gradual migration away from Supabase's managed platform.
 
 Two Supabase services are replicated:
 
@@ -20,7 +20,7 @@ Key constraints: framework-agnostic (Hono internally, Web Standard `fetch` handl
   │
   │  HTTP (apikey + Authorization headers)
   │
-Replacebase (Hono router)
+Replace-a-base (Hono router)
   ├── API key middleware (validates JWTs via jwtSecret)
   ├── /rest/v1/* (PostgREST-compatible)
   │     Parse query params → Drizzle query → SET ROLE + set_config → execute

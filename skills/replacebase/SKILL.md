@@ -1,25 +1,25 @@
 ---
-name: replacebase
-description: Replacebase integration skill for migrating away from Supabase. Use this skill when setting up Replacebase, configuring a Supabase-compatible backend, or migrating from Supabase to self-hosted infrastructure. Triggers on tasks involving Supabase migration, Replacebase setup, or replacing Supabase services with self-hosted alternatives.
+name: replace-a-base
+description: Replace-a-base integration skill for migrating away from Supabase. Use this skill when setting up Replace-a-base, configuring a Supabase-compatible backend, or migrating from Supabase to self-hosted infrastructure. Triggers on tasks involving Supabase migration, Replace-a-base setup, or replacing Supabase services with self-hosted alternatives.
 license: MIT
 metadata:
   author: specific
   version: "1.0.0"
 ---
 
-# Replacebase
+# Replace-a-base
 
-Replacebase is a TypeScript library that serves as a drop-in replacement for Supabase's backend. It wraps your Postgres database and S3 storage, and exposes a Supabase-compatible API. This means you don't have to change any frontend logic and can unify all your backend code for a simpler architecture.
+Replace-a-base is a TypeScript library that serves as a drop-in replacement for Supabase's backend. It wraps your Postgres database and S3 storage, and exposes a Supabase-compatible API. This means you don't have to change any frontend logic and can unify all your backend code for a simpler architecture.
 
 ## When to Apply
 
-- Setting up a new Replacebase instance to replace Supabase
+- Setting up a new Replace-a-base instance to replace Supabase
 - Migrating an existing app from Supabase to self-hosted infrastructure
-- Configuring REST API, Auth, Storage, or Realtime to work with Replacebase
-- Updating `@supabase/supabase-js` client config to point at Replacebase
-- Choosing a hosting provider or framework integration for Replacebase
+- Configuring REST API, Auth, Storage, or Realtime to work with Replace-a-base
+- Updating `@supabase/supabase-js` client config to point at Replace-a-base
+- Choosing a hosting provider or framework integration for Replace-a-base
 
-## What Replacebase Supports
+## What Replace-a-base Supports
 
 | Service  | Description                                       |
 | -------- | ------------------------------------------------- |
@@ -31,7 +31,7 @@ Replacebase is a TypeScript library that serves as a drop-in replacement for Sup
 ## Installation
 
 ```bash
-npm install @specific.dev/replacebase
+npm install @specific.dev/replace-a-base
 ```
 
 ## Setup
@@ -45,11 +45,11 @@ You need the following from your Supabase project:
 3. **Legacy JWT secret** — go to Settings > JWT Keys > Legacy JWT Secret
 4. **S3 connection details** (if using storage) — go to Storage > S3
 
-### 2. Initialize Replacebase
+### 2. Initialize Replace-a-base
 
 ```ts
 // server.ts
-import { createReplacebase } from "replacebase";
+import { createReplacebase } from "replace-a-base";
 
 const replacebase = await createReplacebase({
   databaseUrl: process.env.DATABASE_URL!, // Supabase Postgres connection string
@@ -69,11 +69,11 @@ const replacebase = await createReplacebase({
 
 ### 3. Serve with Your Framework
 
-Replacebase is framework-agnostic. Pick whichever fits your stack:
+Replace-a-base is framework-agnostic. Pick whichever fits your stack:
 
 **Next.js:**
 
-Since Next.js catch-all routes are mounted under a subpath, use the `basePath` option so Replacebase matches routes correctly:
+Since Next.js catch-all routes are mounted under a subpath, use the `basePath` option so Replace-a-base matches routes correctly:
 
 ```ts
 // app/api/[...path]/route.ts
@@ -89,7 +89,7 @@ export const PATCH = replacebase.fetch;
 export const DELETE = replacebase.fetch;
 ```
 
-Note: Next.js API routes don't support WebSockets, so Realtime won't work with this setup. If you need Realtime, run Replacebase as a separate backend service.
+Note: Next.js API routes don't support WebSockets, so Realtime won't work with this setup. If you need Realtime, run Replace-a-base as a separate backend service.
 
 **Express:**
 
@@ -119,13 +119,13 @@ replacebase.injectWebSocket(server);
 
 ### 4. Update Client Config
 
-The only frontend change is pointing the Supabase client at your Replacebase server:
+The only frontend change is pointing the Supabase client at your Replace-a-base server:
 
 ```ts
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
-  "https://your-replacebase-server.com", // Your Replacebase URL
+  "https://your-replace-a-base-server.com", // Your Replace-a-base URL
   "your-anon-key",
 );
 ```
@@ -152,8 +152,8 @@ const supabase = createClient(
 
 ## Migration Path
 
-Once Replacebase is running, you can gradually:
+Once Replace-a-base is running, you can gradually:
 
 1. **Change Postgres provider** — move to AWS RDS, Neon, or any Postgres host. Update `databaseUrl` and your frontend keeps working.
 2. **Change storage provider** — switch to AWS S3, Cloudflare R2, or any S3-compatible service. Migrate files with `rclone` and update credentials.
-3. **Migrate away from the Supabase SDK** — build regular backend endpoints alongside Replacebase. Replace `supabase.from("posts").select()` calls with your own API. Eventually drop `@supabase/supabase-js` entirely.
+3. **Migrate away from the Supabase SDK** — build regular backend endpoints alongside Replace-a-base. Replace `supabase.from("posts").select()` calls with your own API. Eventually drop `@supabase/supabase-js` entirely.
