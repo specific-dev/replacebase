@@ -5,6 +5,7 @@ import { apiKeyMiddleware } from "./middleware/api-key.js";
 import { supabaseCors } from "./middleware/cors.js";
 import { createRestRouter } from "./rest/index.js";
 import { createAuthRouter } from "./auth/index.js";
+import { createStorageRouter } from "./storage/index.js";
 
 export function createApp(config: ReplacebaseConfig): Hono {
   const app = new Hono();
@@ -34,6 +35,16 @@ export function createApp(config: ReplacebaseConfig): Hono {
     config.jwtSecret
   );
   app.route("/auth/v1", authRouter);
+
+  // Conditionally mount Storage router
+  if (config.storage) {
+    const storageRouter = createStorageRouter(
+      config.db as PgDatabase<any, any, any>,
+      config.jwtSecret,
+      config.storage
+    );
+    app.route("/storage/v1", storageRouter);
+  }
 
   return app;
 }

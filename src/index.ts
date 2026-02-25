@@ -3,7 +3,7 @@ import type { ReplacebaseConfig, Replacebase } from "./types.js";
 import { getRequestListener } from "@hono/node-server";
 import { SignJWT } from "jose";
 
-export type { ReplacebaseConfig, Replacebase, JwtClaims, RequestContext } from "./types.js";
+export type { ReplacebaseConfig, Replacebase, JwtClaims, RequestContext, StorageConfig } from "./types.js";
 
 export function createReplacebase(config: ReplacebaseConfig): Replacebase {
   const app = createApp(config);
