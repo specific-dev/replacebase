@@ -1,0 +1,64 @@
+name: Publish to NPM
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Force publish even if version unchanged"
+        required: false
+        default: false
+        type: boolean
+  push:
+    branches:
+      - main
+    paths:
+      - "src/**"
+      - "package.json"
+      - "tsconfig.json"
+      - ".github/workflows/publish.yml"
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Update npm for OIDC support
+        run: npm install -g npm@latest
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Check if version changed
+        id: version-check
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          NPM_VERSION=$(npm view @specific.dev/replacebase version 2>/dev/null || echo "0.0.0")
+
+          if [ "${{ inputs.force }}" == "true" ]; then
+            echo "Force publish requested"
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+          elif [ "$PACKAGE_VERSION" != "$NPM_VERSION" ]; then
+            echo "Version changed: $NPM_VERSION -> $PACKAGE_VERSION"
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+          else
+            echo "Version unchanged: $PACKAGE_VERSION"
+            echo "should_publish=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Publish to NPM
+        if: steps.version-check.outputs.should_publish == 'true'
+        run: npm publish --access public
