@@ -1,6 +1,6 @@
 {
   "name": "@specific.dev/replacebase",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Drop-in replacement for Supabase's backend as a Typescript library",
   "type": "module",
   "main": "./dist/index.js",

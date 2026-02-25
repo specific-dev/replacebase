@@ -19,6 +19,7 @@ export interface ReplacebaseConfig {
   jwksUrl?: string;
   storage?: StorageConfig;
   schemas?: string[];
+  basePath?: string;
 }
 
 /** Internal resolved config passed to createApp after introspection */
@@ -29,6 +30,7 @@ export interface ResolvedConfig {
   jwtSecret: string;
   jwksUrl?: string;
   storage?: StorageConfig;
+  basePath?: string;
 }
 
 export interface Replacebase {

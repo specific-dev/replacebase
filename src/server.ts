@@ -9,7 +9,7 @@ import { createAuthRouter } from "./auth/index";
 import { createStorageRouter } from "./storage/index";
 
 export function createApp(config: ResolvedConfig, keys: JwtKeys): Hono {
-  const app = new Hono();
+  const app = config.basePath ? new Hono().basePath(config.basePath) : new Hono();
 
   // Global middleware
   app.use("*", supabaseCors());

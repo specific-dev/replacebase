@@ -1,6 +1,6 @@
 # Replacebase
 
-Replacebase is a library and tool to help you migrate away from [Supabase](https://supabase.com) over to backend infrastructure that you control. It's a simple Typescript library that wraps your Postgres database and S3 storage, and exposes a Supabase-compatible API. This means you don't have to change any frontend logic and can unify all your backend code for a simpler architecture.
+Replacebase is a library to help you migrate away from [Supabase](https://supabase.com) over to backend infrastructure that you control. It's a simple Typescript library that wraps your Postgres database and S3 storage, and exposes a Supabase-compatible API. This means you don't have to change any frontend logic and can unify all your backend code for a simpler architecture.
 
 There are many reason to use Replacebase:
 
@@ -74,8 +74,15 @@ Next you need to serve up the APIs that Replacebase exposes. Replacebase is fram
 <details>
 <summary><strong>Next.js</strong></summary>
 
+Since Next.js catch-all routes are mounted under a subpath, use the `basePath` option so Replacebase matches routes correctly:
+
 ```ts
 // app/api/[...path]/route.ts
+const replacebase = await createReplacebase({
+  // ...
+  basePath: "/api",
+});
+
 export const GET = replacebase.fetch;
 export const POST = replacebase.fetch;
 export const PUT = replacebase.fetch;

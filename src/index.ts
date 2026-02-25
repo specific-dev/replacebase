@@ -29,6 +29,7 @@ export async function createReplacebase(config: ReplacebaseConfig): Promise<Repl
     jwtSecret: config.jwtSecret,
     jwksUrl: config.jwksUrl,
     storage: config.storage,
+    basePath: normalizeBasePath(config.basePath),
   };
 
   return createReplacebaseFromResolved(resolved);
@@ -62,6 +63,15 @@ function createReplacebaseFromResolved(config: ResolvedConfig): Replacebase {
     injectWebSocket,
     app,
   };
+}
+
+function normalizeBasePath(basePath: string | undefined): string | undefined {
+  if (!basePath) return undefined;
+  // Ensure leading slash
+  let normalized = basePath.startsWith("/") ? basePath : `/${basePath}`;
+  // Strip trailing slash
+  normalized = normalized.replace(/\/+$/, "");
+  return normalized || undefined;
 }
 
 export async function generateKeys(jwtSecret: string): Promise<{
