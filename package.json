@@ -1,5 +1,5 @@
 {
-  "name": "@specific.dev/replacebase",
+  "name": "@specific.dev/replace-a-base",
   "version": "0.2.0",
   "description": "Drop-in replacement for Supabase's backend as a Typescript library",
   "type": "module",
@@ -30,7 +30,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/specific-dev/replacebase"
+    "url": "https://github.com/specific-dev/replace-a-base"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.997.0",

@@ -63,7 +63,7 @@ jobs:
         id: version-check
         run: |
           PACKAGE_VERSION=$(node -p "require('./package.json').version")
-          NPM_VERSION=$(npm view @specific.dev/replacebase version 2>/dev/null || echo "0.0.0")
+          NPM_VERSION=$(npm view @specific.dev/replace-a-base version 2>/dev/null || echo "0.0.0")
 
           if [ "${{ inputs.force }}" == "true" ]; then
             echo "Force publish requested"
