@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseFilter, parseLogicalFilter } from "../../src/rest/parser/filter.js";
+import { parseFilter, parseLogicalFilter } from "./filter.js";
 
 describe("Filter Parser", () => {
   it("parses eq filter", () => {
