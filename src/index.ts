@@ -17,7 +17,7 @@ export async function createReplacebase(config: ReplacebaseConfig): Promise<Repl
   const pgClient = postgres(config.databaseUrl);
   const db = drizzle(pgClient);
 
-  const { tables, foreignKeys } = await introspectDatabase(
+  const { tables, foreignKeys, views } = await introspectDatabase(
     db as any,
     config.schemas ?? ["public"]
   );
@@ -26,6 +26,7 @@ export async function createReplacebase(config: ReplacebaseConfig): Promise<Repl
     db: db as any,
     schema: tables,
     foreignKeys,
+    views,
     jwtSecret: config.jwtSecret,
     jwksUrl: config.jwksUrl,
     storage: config.storage,

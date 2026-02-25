@@ -62,6 +62,21 @@ export async function createTestDb() {
     )
   `);
 
+  // Create a view that joins posts with profiles
+  await db.execute(sql`
+    CREATE OR REPLACE VIEW post_details AS
+    SELECT
+      p.id,
+      p.title,
+      p.body,
+      p.user_id,
+      p.published,
+      p.created_at,
+      pr.username AS author_name
+    FROM posts p
+    LEFT JOIN profiles pr ON p.user_id = pr.id
+  `);
+
   return { pglite, db };
 }
 

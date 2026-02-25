@@ -184,6 +184,9 @@ export class QueryBuilder {
     if (!tableMeta) {
       throw new Error(`Table '${options.table}' not found in schema`);
     }
+    if (tableMeta.isView) {
+      throw new Error(`Cannot insert into a view '${options.table}'`);
+    }
 
     const table = tableMeta.table;
     const rows = Array.isArray(options.body) ? options.body : [options.body];
@@ -243,6 +246,9 @@ export class QueryBuilder {
     if (!tableMeta) {
       throw new Error(`Table '${options.table}' not found in schema`);
     }
+    if (tableMeta.isView) {
+      throw new Error(`Cannot update a view '${options.table}'`);
+    }
 
     const table = tableMeta.table;
     const where = this.buildWhereClause(options.filters, tableMeta);
@@ -267,6 +273,9 @@ export class QueryBuilder {
     const tableMeta = this.registry.getTable(options.table);
     if (!tableMeta) {
       throw new Error(`Table '${options.table}' not found in schema`);
+    }
+    if (tableMeta.isView) {
+      throw new Error(`Cannot delete from a view '${options.table}'`);
     }
 
     const table = tableMeta.table;

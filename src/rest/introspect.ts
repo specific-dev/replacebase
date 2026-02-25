@@ -51,11 +51,13 @@ interface IntrospectedTable {
   columns: IntrospectedColumn[];
   primaryKeys: string[];
   foreignKeys: ForeignKeyMeta[];
+  isView: boolean;
 }
 
 export interface IntrospectionResult {
   tables: Record<string, PgTable>;
   foreignKeys: Map<string, ForeignKeyMeta[]>;
+  views: Set<string>;
 }
 
 export async function introspectDatabase(
@@ -67,13 +69,17 @@ export async function introspectDatabase(
 
   // Collect foreign keys keyed by source table name
   const foreignKeysByTable = new Map<string, ForeignKeyMeta[]>();
+  const views = new Set<string>();
   for (const table of tables) {
     if (table.foreignKeys.length > 0) {
       foreignKeysByTable.set(table.name, table.foreignKeys);
     }
+    if (table.isView) {
+      views.add(table.name);
+    }
   }
 
-  return { tables: drizzleTables, foreignKeys: foreignKeysByTable };
+  return { tables: drizzleTables, foreignKeys: foreignKeysByTable, views };
 }
 
 async function discoverTables(
@@ -87,12 +93,12 @@ async function discoverTables(
     sql`, `
   );
 
-  // Query all tables
+  // Query all tables and views
   const tablesResult = await (db as any).execute(sql`
-    SELECT table_schema, table_name
+    SELECT table_schema, table_name, table_type
     FROM information_schema.tables
     WHERE table_schema IN (${schemaFilter})
-      AND table_type = 'BASE TABLE'
+      AND table_type IN ('BASE TABLE', 'VIEW')
     ORDER BY table_schema, table_name
   `);
   const tableRows = normalizeRows(tablesResult);
@@ -159,6 +165,7 @@ async function discoverTables(
   for (const tableRow of tableRows) {
     const schema = tableRow.table_schema;
     const name = tableRow.table_name;
+    const isView = tableRow.table_type === "VIEW";
 
     const columns: IntrospectedColumn[] = columnRows
       .filter(
@@ -182,35 +189,40 @@ async function discoverTables(
           : null,
       }));
 
-    const primaryKeys = pkRows
-      .filter(
-        (pk: any) => pk.table_schema === schema && pk.table_name === name
-      )
-      .map((pk: any) => pk.column_name);
+    // Views don't have primary keys or foreign keys in information_schema
+    const primaryKeys = isView
+      ? []
+      : pkRows
+          .filter(
+            (pk: any) => pk.table_schema === schema && pk.table_name === name
+          )
+          .map((pk: any) => pk.column_name);
 
-    // Group FK columns by constraint (multi-column FKs)
-    const fkForTable = fkRows.filter(
-      (fk: any) => fk.table_schema === schema && fk.table_name === name
-    );
     const foreignKeys: ForeignKeyMeta[] = [];
-    // Each row is one column of the FK — group them
-    const fkMap = new Map<string, ForeignKeyMeta>();
-    for (const fk of fkForTable) {
-      const key = `${fk.column_name}->${fk.foreign_table_name}.${fk.foreign_column_name}`;
-      // Simple: each FK row from information_schema with single-column FKs
-      // For multi-column FKs we'd need constraint_name grouping, but this works
-      // for the common case
-      if (!fkMap.has(key)) {
-        fkMap.set(key, {
-          columns: [fk.column_name],
-          foreignTable: fk.foreign_table_name,
-          foreignColumns: [fk.foreign_column_name],
-        });
+    if (!isView) {
+      // Group FK columns by constraint (multi-column FKs)
+      const fkForTable = fkRows.filter(
+        (fk: any) => fk.table_schema === schema && fk.table_name === name
+      );
+      // Each row is one column of the FK — group them
+      const fkMap = new Map<string, ForeignKeyMeta>();
+      for (const fk of fkForTable) {
+        const key = `${fk.column_name}->${fk.foreign_table_name}.${fk.foreign_column_name}`;
+        // Simple: each FK row from information_schema with single-column FKs
+        // For multi-column FKs we'd need constraint_name grouping, but this works
+        // for the common case
+        if (!fkMap.has(key)) {
+          fkMap.set(key, {
+            columns: [fk.column_name],
+            foreignTable: fk.foreign_table_name,
+            foreignColumns: [fk.foreign_column_name],
+          });
+        }
       }
+      foreignKeys.push(...fkMap.values());
     }
-    foreignKeys.push(...fkMap.values());
 
-    tables.push({ name, schema, columns, primaryKeys, foreignKeys });
+    tables.push({ name, schema, columns, primaryKeys, foreignKeys, isView });
   }
 
   return tables;

@@ -16,12 +16,13 @@ export async function createTestEnv() {
   const { userId1, userId2 } = await seedTestData(db);
 
   // Use introspection to discover schema from PGlite, just like production
-  const { tables, foreignKeys } = await introspectDatabase(db as any);
+  const { tables, foreignKeys, views } = await introspectDatabase(db as any);
 
   const replacebase = createReplacebaseInternal({
     db: db as any,
     schema: tables,
     foreignKeys,
+    views,
     jwtSecret: TEST_JWT_SECRET,
   });
 
@@ -65,7 +66,7 @@ export async function createStorageTestEnv() {
   const { userId1, userId2 } = await seedTestData(db);
 
   // Use introspection to discover schema from PGlite
-  const { tables, foreignKeys } = await introspectDatabase(db as any);
+  const { tables, foreignKeys, views } = await introspectDatabase(db as any);
 
   // Start local S3 server
   const s3Dir = mkdtempSync(join(tmpdir(), "replacebase-s3-"));
@@ -102,6 +103,7 @@ export async function createStorageTestEnv() {
     db: db as any,
     schema: tables,
     foreignKeys,
+    views,
     jwtSecret: TEST_JWT_SECRET,
     storage: storageConfig,
   });

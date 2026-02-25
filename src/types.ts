@@ -27,6 +27,7 @@ export interface ResolvedConfig {
   db: PgDatabase<any, any, any>;
   schema: Record<string, unknown>;
   foreignKeys: Map<string, ForeignKeyMeta[]>;
+  views?: Set<string>;
   jwtSecret: string;
   jwksUrl?: string;
   storage?: StorageConfig;

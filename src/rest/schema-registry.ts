@@ -31,28 +31,30 @@ export interface TableMeta {
   primaryKeys: string[];
   foreignKeys: ForeignKeyMeta[];
   table: PgTable;
+  isView: boolean;
 }
 
 export class SchemaRegistry {
   private tables = new Map<string, TableMeta>();
 
-  constructor(schema: Record<string, unknown>, externalForeignKeys?: Map<string, ForeignKeyMeta[]>) {
-    this.registerSchema(schema);
+  constructor(schema: Record<string, unknown>, externalForeignKeys?: Map<string, ForeignKeyMeta[]>, views?: Set<string>) {
+    this.registerSchema(schema, views);
     if (externalForeignKeys) {
       this.injectForeignKeys(externalForeignKeys);
     }
   }
 
-  private registerSchema(schema: Record<string, unknown>): void {
+  private registerSchema(schema: Record<string, unknown>, views?: Set<string>): void {
     for (const [_key, value] of Object.entries(schema)) {
       if (is(value, Table)) {
         const table = value as PgTable;
-        this.registerTable(table);
+        const tableName = getTableName(table);
+        this.registerTable(table, views?.has(tableName) ?? false);
       }
     }
   }
 
-  private registerTable(table: PgTable): void {
+  private registerTable(table: PgTable, isView: boolean = false): void {
     const tableName = getTableName(table);
     const rawColumns = getTableColumns(table);
     const config = getTableConfig(table);
@@ -96,6 +98,7 @@ export class SchemaRegistry {
       primaryKeys,
       foreignKeys,
       table,
+      isView,
     };
 
     this.tables.set(tableName, meta);

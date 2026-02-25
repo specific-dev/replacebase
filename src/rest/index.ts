@@ -17,10 +17,11 @@ import type { RLSContext } from "./rls";
 export function createRestRouter(
   db: PgDatabase<any, any, any>,
   schema: Record<string, unknown>,
-  foreignKeys?: Map<string, ForeignKeyMeta[]>
+  foreignKeys?: Map<string, ForeignKeyMeta[]>,
+  views?: Set<string>
 ): Hono {
   const app = new Hono();
-  const registry = new SchemaRegistry(schema, foreignKeys);
+  const registry = new SchemaRegistry(schema, foreignKeys, views);
 
   // POST /rpc/:function_name - RPC call
   app.post("/rpc/:function_name", async (c) => {
