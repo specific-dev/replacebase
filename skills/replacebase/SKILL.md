@@ -21,12 +21,12 @@ Replacebase is a TypeScript library that serves as a drop-in replacement for Sup
 
 ## What Replacebase Supports
 
-| Service   | Description                                      |
-| --------- | ------------------------------------------------ |
-| REST API  | PostgREST-compatible CRUD against any Postgres DB |
-| Auth      | GoTrue-compatible auth API, built on Better Auth  |
-| Storage   | S3-compatible file storage                        |
-| Realtime  | Broadcast and presence over WebSockets            |
+| Service  | Description                                       |
+| -------- | ------------------------------------------------- |
+| REST API | PostgREST-compatible CRUD against any Postgres DB |
+| Auth     | GoTrue-compatible auth API, built on Better Auth  |
+| Storage  | S3-compatible file storage                        |
+| Realtime | Broadcast and presence over WebSockets            |
 
 ## Installation
 
@@ -63,6 +63,8 @@ const replacebase = await createReplacebase({
       secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
     },
   },
+  // Optional: Set if served from a subpath (like with Next.js)
+  baseUrl: "/",
 });
 ```
 
@@ -118,29 +120,29 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
   "https://your-replacebase-server.com", // Your Replacebase URL
-  "your-anon-key"
+  "your-anon-key",
 );
 ```
 
 ## Configuration Reference
 
-| Option        | Type     | Required | Description                                    |
-| ------------- | -------- | -------- | ---------------------------------------------- |
-| `databaseUrl` | `string` | Yes      | Postgres connection string                     |
-| `jwtSecret`   | `string` | Yes      | Supabase legacy JWT secret (HS256 signing key) |
-| `jwksUrl`     | `string` | No       | Full URL to Supabase JWKS endpoint             |
-| `storage`     | `object` | No       | S3-compatible storage configuration            |
-| `schemas`     | `string[]` | No     | Postgres schemas to expose (default: `["public"]`) |
+| Option        | Type       | Required | Description                                        |
+| ------------- | ---------- | -------- | -------------------------------------------------- |
+| `databaseUrl` | `string`   | Yes      | Postgres connection string                         |
+| `jwtSecret`   | `string`   | Yes      | Supabase legacy JWT secret (HS256 signing key)     |
+| `jwksUrl`     | `string`   | No       | Full URL to Supabase JWKS endpoint                 |
+| `storage`     | `object`   | No       | S3-compatible storage configuration                |
+| `schemas`     | `string[]` | No       | Postgres schemas to expose (default: `["public"]`) |
 
 ## Exported API
 
-| Export              | Type                                         | Description                              |
-| ------------------- | -------------------------------------------- | ---------------------------------------- |
-| `replacebase.fetch` | `(Request) => Promise<Response>`             | Web Standard fetch handler               |
-| `replacebase.toNodeHandler()` | `(req, res) => void`              | Node.js HTTP handler (Express, Fastify)  |
-| `replacebase.injectWebSocket(server)` | `(server) => void`      | Attach Realtime WebSocket to HTTP server |
-| `replacebase.app`   | `Hono`                                       | Raw Hono instance for advanced usage     |
-| `generateKeys(jwtSecret)` | `Promise<{ anonKey, serviceRoleKey }>` | Generate API keys from JWT secret        |
+| Export                                | Type                                   | Description                              |
+| ------------------------------------- | -------------------------------------- | ---------------------------------------- |
+| `replacebase.fetch`                   | `(Request) => Promise<Response>`       | Web Standard fetch handler               |
+| `replacebase.toNodeHandler()`         | `(req, res) => void`                   | Node.js HTTP handler (Express, Fastify)  |
+| `replacebase.injectWebSocket(server)` | `(server) => void`                     | Attach Realtime WebSocket to HTTP server |
+| `replacebase.app`                     | `Hono`                                 | Raw Hono instance for advanced usage     |
+| `generateKeys(jwtSecret)`             | `Promise<{ anonKey, serviceRoleKey }>` | Generate API keys from JWT secret        |
 
 ## Migration Path
 
