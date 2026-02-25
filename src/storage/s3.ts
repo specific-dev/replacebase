@@ -76,7 +76,7 @@ export class S3ObjectStorage implements ObjectStorage {
       new PutObjectCommand({
         Bucket: this.bucket,
         Key: this.fullKey(key),
-        Body: body instanceof Buffer ? body : await streamToBuffer(body),
+        Body: Buffer.isBuffer(body) ? body : await streamToBuffer(body as ReadableStream),
         ContentType: options?.contentType,
         CacheControl: options?.cacheControl,
         ContentLength: options?.contentLength,

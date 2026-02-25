@@ -438,45 +438,7 @@ export function createStorageRouter(
     }
   });
 
-  // Create signed download URL (single)
-  app.post("/object/sign/:bucketId/*", auth, async (c) => {
-    const bucketId = c.req.param("bucketId");
-    const objectPath = extractObjectPath(c.req.path, `/object/sign/${bucketId}/`);
-    const body = await c.req.json();
-    const ctx = getRLSContext(c);
-    const expiresIn = body.expiresIn || 3600;
-
-    try {
-      // Verify object exists and user has access
-      const [obj] = await withRLS(db, ctx, (tx) =>
-        tx
-          .select()
-          .from(storageObjects)
-          .where(
-            and(
-              eq(storageObjects.bucketId, bucketId),
-              eq(storageObjects.name, objectPath)
-            )
-          )
-      );
-
-      if (!obj) {
-        return c.json({ statusCode: "404", error: "Object not found", message: "Object not found" }, 404);
-      }
-
-      const token = await createSignedToken(jwtSecret, {
-        url: `${bucketId}/${objectPath}`,
-        type: "download",
-      }, expiresIn);
-
-      const signedURL = `/object/sign/${bucketId}/${objectPath}?token=${token}`;
-      return c.json({ signedURL });
-    } catch (error: any) {
-      return c.json({ statusCode: "500", error: error.message, message: error.message }, 500);
-    }
-  });
-
-  // Batch create signed download URLs
+  // Batch create signed download URLs (must be before wildcard route)
   app.post("/object/sign/:bucketId", auth, async (c) => {
     const bucketId = c.req.param("bucketId");
     const body = await c.req.json();
@@ -517,6 +479,44 @@ export function createStorageRouter(
       );
 
       return c.json(results);
+    } catch (error: any) {
+      return c.json({ statusCode: "500", error: error.message, message: error.message }, 500);
+    }
+  });
+
+  // Create signed download URL (single)
+  app.post("/object/sign/:bucketId/*", auth, async (c) => {
+    const bucketId = c.req.param("bucketId");
+    const objectPath = extractObjectPath(c.req.path, `/object/sign/${bucketId}/`);
+    const body = await c.req.json();
+    const ctx = getRLSContext(c);
+    const expiresIn = body.expiresIn || 3600;
+
+    try {
+      // Verify object exists and user has access
+      const [obj] = await withRLS(db, ctx, (tx) =>
+        tx
+          .select()
+          .from(storageObjects)
+          .where(
+            and(
+              eq(storageObjects.bucketId, bucketId),
+              eq(storageObjects.name, objectPath)
+            )
+          )
+      );
+
+      if (!obj) {
+        return c.json({ statusCode: "404", error: "Object not found", message: "Object not found" }, 404);
+      }
+
+      const token = await createSignedToken(jwtSecret, {
+        url: `${bucketId}/${objectPath}`,
+        type: "download",
+      }, expiresIn);
+
+      const signedURL = `/object/sign/${bucketId}/${objectPath}?token=${token}`;
+      return c.json({ signedURL });
     } catch (error: any) {
       return c.json({ statusCode: "500", error: error.message, message: error.message }, 500);
     }
@@ -717,44 +717,6 @@ export function createStorageRouter(
         return c.json({ statusCode: "404", error: "Object not found", message: "Object not found" }, 404);
       }
       return c.json({ statusCode: "500", error: error.message, message: error.message }, 500);
-    }
-  });
-
-  // Head object
-  app.head("/object/:bucketId/*", auth, async (c) => {
-    const bucketId = c.req.param("bucketId");
-    const objectPath = extractObjectPath(c.req.path, `/object/${bucketId}/`);
-    const ctx = getRLSContext(c);
-
-    try {
-      const [obj] = await withRLS(db, ctx, (tx) =>
-        tx
-          .select()
-          .from(storageObjects)
-          .where(
-            and(
-              eq(storageObjects.bucketId, bucketId),
-              eq(storageObjects.name, objectPath)
-            )
-          )
-      );
-
-      if (!obj) {
-        return new Response(null, { status: 404 });
-      }
-
-      const head = await objectStorage.headObject(`${bucketId}/${objectPath}`);
-
-      return new Response(null, {
-        status: 200,
-        headers: {
-          "Content-Type": head.contentType,
-          "Content-Length": String(head.contentLength),
-          "ETag": head.etag,
-        },
-      });
-    } catch (error: any) {
-      return new Response(null, { status: 500 });
     }
   });
 
