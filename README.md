@@ -10,12 +10,15 @@ There are many reason to use Replacebase:
 - Gradually migrate away from using Supabase SDKs to a more flexible backend architecture that you control
 - Replace inflexible Supabase services with better alternatives, like [Better Auth](https://better-auth.com)
 
-Replacebase currently supports and replaces:
+Replacebase implements many parts of Supabase (with more to come):
 
-- REST API (can connect to any Postgres database)
-- Auth (built on [Better Auth](https://better-auth.com))
-- Storage (can connect to any S3-compatible service)
-- Realtime (broadcast and presence)
+- [x] REST API (can connect to any Postgres database)
+- [x] Auth (built on [Better Auth](https://better-auth.com))
+- [x] Storage (can connect to any S3-compatible service)
+- [x] Realtime (broadcast and presence)
+- [ ] Edge functions
+- [ ] RPC
+- [ ] Vectors
 
 _This is an early-stage project, use it with care and test thoroughly before using in production_
 
