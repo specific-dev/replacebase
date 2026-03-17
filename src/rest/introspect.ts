@@ -54,10 +54,22 @@ interface IntrospectedTable {
   isView: boolean;
 }
 
+export interface IntrospectedFunction {
+  name: string;
+  schema: string;
+  /** Input parameter names */
+  inputParams: string[];
+  /** Return type: 'scalar', 'void', 'setof', or 'table' */
+  returnKind: "scalar" | "void" | "setof" | "table";
+  /** Column names in the return type (for setof/table functions) */
+  returnColumns: string[];
+}
+
 export interface IntrospectionResult {
   tables: Record<string, PgTable>;
   foreignKeys: Map<string, ForeignKeyMeta[]>;
   views: Set<string>;
+  functions: Map<string, IntrospectedFunction>;
 }
 
 export async function introspectDatabase(
@@ -79,7 +91,9 @@ export async function introspectDatabase(
     }
   }
 
-  return { tables: drizzleTables, foreignKeys: foreignKeysByTable, views };
+  const functions = await discoverFunctions(db, schemas);
+
+  return { tables: drizzleTables, foreignKeys: foreignKeysByTable, views, functions };
 }
 
 async function discoverTables(
@@ -226,6 +240,95 @@ async function discoverTables(
   }
 
   return tables;
+}
+
+async function discoverFunctions(
+  db: PgDatabase<any, any, any>,
+  schemas: string[]
+): Promise<Map<string, IntrospectedFunction>> {
+  const schemaFilter = sql.join(
+    schemas.map((s) => sql`${s}`),
+    sql`, `
+  );
+
+  // Query all user-defined functions with their argument info and return type
+  const result = await (db as any).execute(sql`
+    SELECT
+      p.proname AS name,
+      n.nspname AS schema,
+      p.proargnames AS arg_names,
+      p.proargmodes AS arg_modes,
+      t.typname AS return_type,
+      t.typtype AS return_type_kind,
+      p.proretset,
+      CASE
+        WHEN t.typtype = 'c' THEN t.typrelid
+        ELSE 0
+      END AS return_table_oid
+    FROM pg_proc p
+    JOIN pg_namespace n ON p.pronamespace = n.oid
+    JOIN pg_type t ON p.prorettype = t.oid
+    WHERE n.nspname IN (${schemaFilter})
+      AND p.prokind = 'f'
+    ORDER BY p.proname
+  `);
+  const rows = normalizeRows(result);
+
+  const functions = new Map<string, IntrospectedFunction>();
+
+  for (const row of rows) {
+    const argNames: string[] = row.arg_names || [];
+    const argModes: string[] | null = row.arg_modes;
+
+    // Determine input parameter names
+    let inputParams: string[];
+    if (argModes) {
+      // When argModes is present, 'i' = input, 't' = table output
+      inputParams = argNames.filter((_: string, i: number) => argModes[i] === "i");
+    } else {
+      // No argModes means all args are input
+      inputParams = argNames;
+    }
+
+    // Determine return kind and columns
+    let returnKind: IntrospectedFunction["returnKind"];
+    let returnColumns: string[] = [];
+
+    if (row.return_type === "void") {
+      returnKind = "void";
+    } else if (row.proretset && argModes && argModes.includes("t")) {
+      // RETURNS TABLE(...) — output columns are the 't' mode args
+      returnKind = "table";
+      returnColumns = argNames.filter((_: string, i: number) => argModes[i] === "t");
+    } else if (row.proretset && row.return_table_oid > 0) {
+      // RETURNS SETOF <table> — get columns from the table's pg_attribute
+      returnKind = "setof";
+      const colResult = await (db as any).execute(sql`
+        SELECT attname
+        FROM pg_attribute
+        WHERE attrelid = ${row.return_table_oid}
+          AND attnum > 0
+          AND NOT attisdropped
+        ORDER BY attnum
+      `);
+      returnColumns = normalizeRows(colResult).map((c: any) => c.attname);
+    } else if (row.proretset) {
+      // RETURNS SETOF scalar or record without known columns
+      returnKind = "setof";
+    } else {
+      returnKind = "scalar";
+    }
+
+    functions.set(row.name, {
+      name: row.name,
+      schema: row.schema,
+      inputParams,
+      returnKind,
+      returnColumns,
+    });
+  }
+
+  return functions;
 }
 
 function buildDrizzleSchema(

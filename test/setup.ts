@@ -77,7 +77,75 @@ export async function createTestDb() {
     LEFT JOIN profiles pr ON p.user_id = pr.id
   `);
 
+  // Create test functions for RPC tests
+  await createTestFunctions(db);
+
   return { pglite, db };
+}
+
+async function createTestFunctions(db: any) {
+  await db.execute(sql`
+    CREATE OR REPLACE FUNCTION hello(name text)
+    RETURNS text AS $$
+    BEGIN
+      RETURN 'Hello, ' || name || '!';
+    END;
+    $$ LANGUAGE plpgsql
+  `);
+
+  await db.execute(sql`
+    CREATE OR REPLACE FUNCTION get_published_posts()
+    RETURNS SETOF posts AS $$
+    BEGIN
+      RETURN QUERY SELECT * FROM posts WHERE published = true;
+    END;
+    $$ LANGUAGE plpgsql
+  `);
+
+  await db.execute(sql`
+    CREATE OR REPLACE FUNCTION add_numbers(a integer, b integer)
+    RETURNS integer AS $$
+    BEGIN
+      RETURN a + b;
+    END;
+    $$ LANGUAGE plpgsql
+  `);
+
+  await db.execute(sql`
+    CREATE OR REPLACE FUNCTION get_posts_by_user(uid uuid)
+    RETURNS SETOF posts AS $$
+    BEGIN
+      RETURN QUERY SELECT * FROM posts WHERE user_id = uid;
+    END;
+    $$ LANGUAGE plpgsql
+  `);
+
+  await db.execute(sql`
+    CREATE OR REPLACE FUNCTION do_nothing()
+    RETURNS void AS $$
+    BEGIN
+      -- void function
+    END;
+    $$ LANGUAGE plpgsql
+  `);
+
+  await db.execute(sql`
+    CREATE OR REPLACE FUNCTION get_all_posts()
+    RETURNS SETOF posts AS $$
+    BEGIN
+      RETURN QUERY SELECT * FROM posts;
+    END;
+    $$ LANGUAGE plpgsql
+  `);
+
+  await db.execute(sql`
+    CREATE OR REPLACE FUNCTION get_post_summaries()
+    RETURNS TABLE(id uuid, title text, published boolean) AS $$
+    BEGIN
+      RETURN QUERY SELECT p.id, p.title, p.published FROM posts p;
+    END;
+    $$ LANGUAGE plpgsql
+  `);
 }
 
 export async function seedTestData(db: any) {

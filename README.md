@@ -16,8 +16,8 @@ Replacebase implements many parts of Supabase (with more to come):
 - [x] Auth (built on [Better Auth](https://better-auth.com))
 - [x] Storage (can connect to any S3-compatible service)
 - [x] Realtime (broadcast and presence)
+- [x] RPC
 - [ ] Edge functions
-- [ ] RPC
 - [ ] Vectors
 
 _This is an early-stage project, use it with care and test thoroughly before using in production_

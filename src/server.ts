@@ -28,7 +28,8 @@ export function createApp(config: ResolvedConfig, keys: JwtKeys): Hono {
     config.db as PgDatabase<any, any, any>,
     config.schema,
     config.foreignKeys,
-    config.views
+    config.views,
+    config.functions
   );
   app.route("/rest/v1", restRouter);
 

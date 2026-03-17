@@ -1,6 +1,7 @@
 import type { Hono } from "hono";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import type { ForeignKeyMeta } from "./rest/schema-registry";
+import type { IntrospectedFunction } from "./rest/introspect";
 
 export interface StorageConfig {
   s3: {
@@ -28,6 +29,7 @@ export interface ResolvedConfig {
   schema: Record<string, unknown>;
   foreignKeys: Map<string, ForeignKeyMeta[]>;
   views?: Set<string>;
+  functions?: Map<string, IntrospectedFunction>;
   jwtSecret: string;
   jwksUrl?: string;
   storage?: StorageConfig;

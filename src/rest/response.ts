@@ -10,15 +10,14 @@ export function formatSelectResponse(
 ): Response {
   // Single object response
   if (acceptHeader === "application/vnd.pgrst.object+json") {
-    if (result.data.length === 0) {
+    if (result.data.length !== 1) {
       return c.json(
-        { message: "JSON object requested, multiple (or no) rows returned", code: "PGRST116" },
-        406
-      );
-    }
-    if (result.data.length > 1) {
-      return c.json(
-        { message: "JSON object requested, multiple (or no) rows returned", code: "PGRST116" },
+        {
+          message: "JSON object requested, multiple (or no) rows returned",
+          details: `Results contain ${result.data.length} rows, application/vnd.pgrst.object+json requires 1 row`,
+          code: "PGRST116",
+          hint: null,
+        },
         406
       );
     }
