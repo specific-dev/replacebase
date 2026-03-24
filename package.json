@@ -1,6 +1,6 @@
 {
   "name": "@specific.dev/replacebase",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Drop-in replacement for Supabase's backend as a Typescript library",
   "type": "module",
   "main": "./dist/index.js",
@@ -16,8 +16,8 @@
     "skills"
   ],
   "scripts": {
-    "build": "tsc",
-    "prepublishOnly": "tsc",
+    "build": "tsup",
+    "prepublishOnly": "tsup",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -50,6 +50,7 @@
     "@types/node": "^25.3.0",
     "drizzle-kit": "^0.31.9",
     "s3rver": "^3.7.1",
+    "tsup": "^8.5.1",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   }
